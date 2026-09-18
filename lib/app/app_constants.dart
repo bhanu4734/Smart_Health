@@ -10,5 +10,5 @@ class AppConstants {
   static const String demoStaffId = 'PHC-WAR-882';
   static const String demoPassword = 'password123';
   static const String demoDoctorName = 'Dr. R. Warangal';
-  static const String demoRole = 'Pharmacist Officer';
+  static const String demoRole = 'PHC Manager';
 }

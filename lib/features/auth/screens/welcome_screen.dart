@@ -2,23 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../app/app_constants.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/responsive/breakpoints.dart';
-import '../controllers/auth_controller.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
-import '../../shell/screens/main_shell_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
-
-  void _continueAsGuest(BuildContext context) {
-    AuthController().loginAsGuest();
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const MainShellScreen(),
-        transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,58 +183,7 @@ class WelcomeScreen extends StatelessWidget {
                       ],
                     ),
 
-                    const SizedBox(height: 20),
-
-                    // Divider: OR
-                    Row(
-                      children: const [
-                        Expanded(child: Divider(color: AppColors.borderSubtle)),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'OR',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: AppColors.borderSubtle)),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Priority 3: Skip / Continue as Guest
-                    SizedBox(
-                      width: double.infinity,
-                      height: 42,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _continueAsGuest(context),
-                        icon: const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                        label: const Text(
-                          'Continue as Guest',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.borderSubtle),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     const Text(
                       'Gov. of Telangana • Warangal Health Network',
                       style: TextStyle(

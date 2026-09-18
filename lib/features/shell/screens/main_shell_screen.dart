@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/responsive/breakpoints.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../widgets/mobile_bottom_nav.dart';
 import '../widgets/desktop_sidebar.dart';
 import '../widgets/app_header.dart';
@@ -11,10 +12,12 @@ import '../../screens/analytics_screen.dart';
 
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
+  final String? userRole;
 
   const MainShellScreen({
     super.key,
     this.initialIndex = 0,
+    this.userRole,
   });
 
   @override
@@ -23,18 +26,89 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
-
-  final List<Widget> _screens = const [
-    DispenseScreen(),
-    CommandScreen(),
-    TransfersScreen(),
-    AnalyticsScreen(),
-  ];
+  late String _activeRole;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _activeRole = widget.userRole ?? AuthController().userRole;
+  }
+
+  bool get _isAdmin {
+    final lower = _activeRole.toLowerCase();
+    return lower.contains('admin') || lower.contains('district');
+  }
+
+  List<Widget> get _screens {
+    if (_isAdmin) {
+      return const [
+        CommandScreen(),
+        TransfersScreen(),
+        AnalyticsScreen(),
+      ];
+    } else {
+      return const [
+        DispenseScreen(),
+      ];
+    }
+  }
+
+  List<Map<String, dynamic>> get _navItems {
+    if (_isAdmin) {
+      return const [
+        {
+          'icon': Icons.grid_view_rounded,
+          'label': 'Command',
+          'badge': '7 Alerts',
+        },
+        {
+          'icon': Icons.swap_horiz_rounded,
+          'label': 'Transfers',
+          'badge': '2 Directives',
+        },
+        {
+          'icon': Icons.auto_graph_rounded,
+          'label': 'Analytics',
+          'badge': '1 Vector',
+        },
+      ];
+    } else {
+      return const [
+        {
+          'icon': Icons.local_pharmacy_rounded,
+          'label': 'Dispense',
+          'badge': 'Active',
+        },
+      ];
+    }
+  }
+
+  void _switchRole() {
+    setState(() {
+      if (_isAdmin) {
+        _activeRole = 'PHC Manager (PHC Level)';
+      } else {
+        _activeRole = 'District Health Officer / Admin (District Level)';
+      }
+      _currentIndex = 0;
+    });
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text('RBAC Role Switched to: ${_isAdmin ? "District Admin" : "PHC Manager"}'),
+          ],
+        ),
+        backgroundColor: AppColors.purpleAccent,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _handleSync() {
@@ -49,6 +123,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   // ─── MOBILE LAYOUT ─────────────────────────────────────────────────────────
   Widget _buildMobileLayout() {
+    final screens = _screens;
+    final activeIndex = _currentIndex.clamp(0, screens.length - 1);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -71,10 +148,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
               ),
               child: Column(
                 children: [
-                  // Top App Bar: [+] Project Resilience & Sync Icon
+                  // Top App Bar: [+] Project Resilience & Role Badge / Switch Icon
                   Container(
-                    height: 52,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    height: 54,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       border: Border(
@@ -109,7 +186,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             const Text(
                               'Project Resilience',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
                                 letterSpacing: -0.3,
@@ -117,16 +194,40 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             ),
                           ],
                         ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.sync_rounded,
-                            size: 20,
-                            color: AppColors.textSecondary,
-                          ),
-                          onPressed: _handleSync,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          splashRadius: 18,
+                        Row(
+                          children: [
+                            // RBAC Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _isAdmin ? AppColors.purpleLight : AppColors.greenBg,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _isAdmin ? AppColors.purpleAccent.withValues(alpha: 0.3) : AppColors.greenBorder,
+                                ),
+                              ),
+                              child: Text(
+                                _isAdmin ? '🛡️ Admin' : '🏥 PHC Staff',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: _isAdmin ? AppColors.purpleAccent : AppColors.greenText,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.swap_horiz_rounded,
+                                size: 20,
+                                color: AppColors.purpleAccent,
+                              ),
+                              onPressed: _switchRole,
+                              tooltip: 'Switch RBAC Role (Admin vs PHC)',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -139,16 +240,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 180),
                         child: KeyedSubtree(
-                          key: ValueKey<int>(_currentIndex),
-                          child: _screens[_currentIndex],
+                          key: ValueKey<int>(activeIndex),
+                          child: screens[activeIndex],
                         ),
                       ),
                     ),
                   ),
 
-                  // Bottom 4-Item Navigation Bar
+                  // Bottom Role-Filtered Navigation Bar
                   MobileBottomNav(
-                    currentIndex: _currentIndex,
+                    currentIndex: activeIndex,
+                    items: _navItems,
                     onTap: (index) {
                       setState(() => _currentIndex = index);
                     },
@@ -164,6 +266,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   // ─── DESKTOP / TABLET LAYOUT ────────────────────────────────────────────────
   Widget _buildDesktopLayout() {
+    final screens = _screens;
+    final activeIndex = _currentIndex.clamp(0, screens.length - 1);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -176,9 +281,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
               );
             },
             onSettingsTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Node settings: Warangal Sector 4')),
-              );
+              _switchRole();
             },
           ),
 
@@ -187,9 +290,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left sidebar navigation
+                // Left sidebar navigation with dynamic RBAC items
                 DesktopSidebar(
-                  selectedIndex: _currentIndex,
+                  selectedIndex: activeIndex,
+                  items: _navItems,
                   onDestinationSelected: (index) {
                     setState(() => _currentIndex = index);
                   },
@@ -200,14 +304,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: KeyedSubtree(
-                      key: ValueKey<int>(_currentIndex),
+                      key: ValueKey<int>(activeIndex),
                       child: SingleChildScrollView(
                         physics: const ClampingScrollPhysics(),
                         child: Center(
                           child: ConstrainedBox(
-                            // Constrain content width on very large screens
                             constraints: const BoxConstraints(maxWidth: 1100),
-                            child: _screens[_currentIndex],
+                            child: screens[activeIndex],
                           ),
                         ),
                       ),

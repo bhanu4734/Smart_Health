@@ -3,6 +3,7 @@ import '../../../app/app_constants.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../services/api_service.dart';
 import '../controllers/auth_controller.dart';
 import '../../shell/screens/main_shell_screen.dart';
 
@@ -19,15 +20,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
-  String _selectedRole = 'Staff Nurse / Dispenser';
+  final TextEditingController _phcIdController = TextEditingController(text: 'PHC-D01-03');
+  String _selectedRole = 'PHC Manager (PHC Level)';
   bool _isLoading = false;
+  List<dynamic> _phcList = [];
 
   final List<String> _roles = [
-    'Pharmacist Officer',
-    'Medical Officer (MO)',
-    'Staff Nurse / Dispenser',
-    'District Inventory Logistics Officer',
+    'PHC Manager (PHC Level)',
+    'District Health Officer / Admin (District Level)',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhcs();
+  }
+
+  Future<void> _loadPhcs() async {
+    final list = await ApiService.fetchPHCs();
+    if (mounted && list.isNotEmpty) {
+      setState(() {
+        _phcList = list;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -35,6 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passController.dispose();
     _confirmPassController.dispose();
+    _phcIdController.dispose();
     super.dispose();
   }
 
@@ -42,22 +59,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await AuthController().register(
-      name: _nameController.text.trim(),
+
+    final res = await ApiService.signup(
+      username: _emailController.text.trim().split('@').first,
       email: _emailController.text.trim(),
       password: _passController.text.trim(),
+      fullName: _nameController.text.trim(),
       role: _selectedRole,
+      phcIdentifier: _phcIdController.text.trim(),
     );
+
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    Navigator.of(context).pushAndRemoveUntil(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const MainShellScreen(),
-        transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
-      ),
-      (route) => false,
-    );
+    if (res['success'] == true) {
+      final user = res['user'] ?? {};
+      final phcId = user['phc_id'] ?? _phcIdController.text.trim();
+      final phcName = user['phc_name'] ?? _phcIdController.text.trim();
+
+      AuthController().setPhcData(phcId, phcName);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res['message'] ?? '🎉 Account created for $phcName! Logged in.'),
+          backgroundColor: AppColors.purpleAccent,
+        ),
+      );
+
+      await AuthController().register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passController.text.trim(),
+        role: _selectedRole,
+      );
+
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => MainShellScreen(userRole: _selectedRole),
+          transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+        ),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res['message'] ?? 'Registration failed. Check PHC ID/Name.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -181,6 +231,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
+
+                      if (_selectedRole.contains('Manager')) ...[
+                        if (_phcList.isNotEmpty) ...[
+                          const Text(
+                            'Select PHC Health Center (from Database)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                              border: Border.all(color: AppColors.borderSubtle),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _phcList.any((p) => p['id'] == _phcIdController.text)
+                                    ? _phcIdController.text
+                                    : _phcList.first['id'],
+                                isExpanded: true,
+                                icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                                items: _phcList.map((p) {
+                                  return DropdownMenuItem<String>(
+                                    value: p['id'].toString(),
+                                    child: Text('${p['name']} (${p['id']})'),
+                                  );
+                                }).toList(),
+                                onChanged: (v) {
+                                  if (v != null) setState(() => _phcIdController.text = v);
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ] else ...[
+                          AppTextField(
+                            label: 'PHC Center ID or Name',
+                            hintText: 'e.g. PHC-D01-03 or Nalgonda Area PHC #3',
+                            controller: _phcIdController,
+                            prefixIcon: Icons.local_hospital_outlined,
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Please enter your PHC Center ID or Name';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                      ],
 
                       // Official Email
                       AppTextField(

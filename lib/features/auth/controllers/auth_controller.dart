@@ -7,16 +7,25 @@ class AuthController extends ChangeNotifier {
   AuthController._internal();
 
   bool _isAuthenticated = false;
-  bool _isGuest = false;
   String _userName = AppConstants.demoDoctorName;
   String _userEmail = AppConstants.demoEmail;
   String _userRole = AppConstants.demoRole;
+  String _phcId = 'PHC-D01-03';
+  String _phcName = 'Nalgonda Area PHC #3';
 
   bool get isAuthenticated => _isAuthenticated;
-  bool get isGuest => _isGuest;
+  bool get isGuest => false;
   String get userName => _userName;
   String get userEmail => _userEmail;
   String get userRole => _userRole;
+  String get phcId => _phcId;
+  String get phcName => _phcName;
+
+  void setPhcData(String id, String name) {
+    _phcId = id;
+    _phcName = name;
+    notifyListeners();
+  }
 
   Future<bool> login({
     required String emailOrStaffId,
@@ -27,7 +36,6 @@ class AuthController extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 500));
 
     _isAuthenticated = true;
-    _isGuest = false;
     _userName = AppConstants.demoDoctorName;
     _userEmail = emailOrStaffId.contains('@') ? emailOrStaffId : '$emailOrStaffId@phc.gov.in';
     _userRole = role ?? AppConstants.demoRole;
@@ -44,7 +52,6 @@ class AuthController extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 600));
 
     _isAuthenticated = true;
-    _isGuest = false;
     _userName = name;
     _userEmail = email;
     _userRole = role;
@@ -52,18 +59,8 @@ class AuthController extends ChangeNotifier {
     return true;
   }
 
-  void loginAsGuest() {
-    _isAuthenticated = true;
-    _isGuest = true;
-    _userName = 'Guest Clinician';
-    _userEmail = 'guest@phc.local';
-    _userRole = 'Emergency Guest Access';
-    notifyListeners();
-  }
-
   void logout() {
     _isAuthenticated = false;
-    _isGuest = false;
     notifyListeners();
   }
 }

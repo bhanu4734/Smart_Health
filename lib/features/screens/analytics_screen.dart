@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app/app_theme.dart';
 import '../../core/widgets/app_card.dart';
+import '../../services/api_service.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -14,21 +15,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   bool _isVectorDismissed = false;
   bool _isRerouteAuthorized = false;
 
-  void _authorizeReroute() {
+  Future<void> _authorizeReroute() async {
     setState(() => _isRerouteAuthorized = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('Autonomous Reroute Authorized: 180 Units En Route (ETA 2.2 hrs)'),
-          ],
+    final res = await ApiService.executeOptimizer();
+    final msg = res['message'] ?? 'Autonomous Reroute Authorized: 180 Units En Route (ETA 2.2 hrs)';
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(msg)),
+            ],
+          ),
+          backgroundColor: AppColors.primaryBlue,
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: AppColors.primaryBlue,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      );
+    }
   }
 
   @override
@@ -84,7 +90,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
               SizedBox(width: 4),
               Text(
-                'Warangal Operational Zone • 4 Sub-nodes Monitored',
+                'Primary Care Health Jurisdiction • All Sub-nodes Monitored',
                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ],

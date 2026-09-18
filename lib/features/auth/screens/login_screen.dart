@@ -5,6 +5,7 @@ import '../../../core/responsive/breakpoints.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../controllers/auth_controller.dart';
 import '../../shell/screens/main_shell_screen.dart';
+import '../../../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,12 +22,11 @@ class _LoginScreenState extends State<LoginScreen> {
       TextEditingController(text: AppConstants.demoPassword);
   bool _rememberMe = true;
   bool _isLoading = false;
-  String _role = AppConstants.demoRole;
+  String _role = 'PHC Manager (PHC Level)';
 
   final List<String> _roles = [
-    'Pharmacist Officer',
-    'Medical Officer (MO)',
-    'Staff Nurse / Dispenser',
+    'PHC Manager (PHC Level)',
+    'District Health Officer / Admin (District Level)',
   ];
 
   @override
@@ -40,21 +40,46 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await AuthController().login(
-      emailOrStaffId: _idController.text.trim(),
+
+    final res = await ApiService.login(
+      usernameOrEmail: _idController.text.trim(),
       password: _passController.text.trim(),
-      role: _role,
     );
+
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    Navigator.of(context).pushAndRemoveUntil(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const MainShellScreen(),
-        transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
-      ),
-      (route) => false,
-    );
+    if (res['success'] == true) {
+      final user = res['user'] ?? {};
+      final roleStr = user['role'] == 'district_admin'
+          ? 'District Health Officer / Admin (District Level)'
+          : 'PHC Manager (PHC Level)';
+
+      if (user['phc_id'] != null) {
+        AuthController().setPhcData(user['phc_id'], user['phc_name'] ?? user['phc_id']);
+      }
+
+      await AuthController().login(
+        emailOrStaffId: _idController.text.trim(),
+        password: _passController.text.trim(),
+        role: roleStr,
+      );
+
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => MainShellScreen(userRole: roleStr),
+          transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+        ),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res['message'] ?? 'Login failed. Check credentials.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _autoFill() {

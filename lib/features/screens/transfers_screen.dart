@@ -3,6 +3,7 @@ import '../../app/app_theme.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/confidence_gauge.dart';
 import '../../shared/models/transfer_directive.dart';
+import '../../services/api_service.dart';
 
 class TransfersScreen extends StatefulWidget {
   const TransfersScreen({super.key});
@@ -15,33 +16,66 @@ class _TransfersScreenState extends State<TransfersScreen> {
   int _activeTab = 0; // 0: Pending, 1: Approved History
   late List<TransferDirective> _directives;
   final List<TransferDirective> _approvedDirectives = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _directives = TransferDirective.getInitialMockData();
+    _loadDirectivesFromApi();
   }
 
-  void _approveDirective(TransferDirective directive) {
+  Future<void> _loadDirectivesFromApi() async {
+    setState(() => _isLoading = true);
+    final rawData = await ApiService.fetchTransferDirectives();
+    if (rawData.isNotEmpty) {
+      final loadedPending = <TransferDirective>[];
+      final loadedApproved = <TransferDirective>[];
+      for (final item in rawData) {
+        final dir = TransferDirective.fromJson(item);
+        if (dir.isApproved) {
+          loadedApproved.add(dir);
+        } else {
+          loadedPending.add(dir);
+        }
+      }
+      setState(() {
+        _directives = loadedPending;
+        _approvedDirectives.clear();
+        _approvedDirectives.addAll(loadedApproved);
+        _isLoading = false;
+      });
+    } else {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _approveDirective(TransferDirective directive) async {
+    if (directive.id != null) {
+      await ApiService.approveTransfer(directive.id!);
+    }
+
     setState(() {
-      _directives.removeWhere((d) => d.directiveNumber == directive.directiveNumber);
+      _directives.removeWhere((d) => d.directiveNumber == directive.directiveNumber || d.id == directive.id);
       directive.isApproved = true;
       _approvedDirectives.insert(0, directive);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.verified_outlined, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text('Signed & Approved ${directive.directiveNumber}'),
-          ],
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.verified_outlined, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text('Signed & Approved ${directive.directiveNumber}'),
+            ],
+          ),
+          backgroundColor: AppColors.primaryBlue,
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: AppColors.primaryBlue,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      );
+    }
   }
 
   void _showDetailsDialog(TransferDirective directive) {

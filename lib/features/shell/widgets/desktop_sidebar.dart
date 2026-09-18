@@ -5,11 +5,13 @@ import '../../../app/app_theme.dart';
 class DesktopSidebar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final List<Map<String, dynamic>> items;
 
   const DesktopSidebar({
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    required this.items,
   });
 
   @override
@@ -89,31 +91,17 @@ class DesktopSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // 4 Main Screens Nav
-          _buildSidebarItem(
-            index: 0,
-            icon: Icons.local_pharmacy_rounded,
-            label: 'Dispense',
-            badgeText: 'Active',
-          ),
-          _buildSidebarItem(
-            index: 1,
-            icon: Icons.grid_view_rounded,
-            label: 'Command',
-            badgeText: '7 Alerts',
-          ),
-          _buildSidebarItem(
-            index: 2,
-            icon: Icons.swap_horiz_rounded,
-            label: 'Transfers',
-            badgeText: '2 Directives',
-          ),
-          _buildSidebarItem(
-            index: 3,
-            icon: Icons.auto_graph_rounded,
-            label: 'Analytics',
-            badgeText: '1 Vector',
-          ),
+          // Main Screens Nav
+          ...items.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final item = entry.value;
+            return _buildSidebarItem(
+              index: idx,
+              icon: item['icon'] as IconData,
+              label: item['label'] as String,
+              badgeText: item['badge'] as String?,
+            );
+          }),
 
           const Spacer(),
 

@@ -199,7 +199,7 @@ class AppHeader extends StatelessWidget {
                       radius: isMobile ? 14 : 16,
                       backgroundColor: AppColors.purpleLight,
                       child: Text(
-                        auth.isGuest ? 'G' : 'RW',
+                        'RW',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

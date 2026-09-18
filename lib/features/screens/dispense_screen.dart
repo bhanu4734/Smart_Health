@@ -3,6 +3,8 @@ import '../../app/app_theme.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../shared/models/medicine_item.dart';
+import '../../services/api_service.dart';
+import '../auth/controllers/auth_controller.dart';
 
 class DispenseScreen extends StatefulWidget {
   const DispenseScreen({super.key});
@@ -16,14 +18,86 @@ class _DispenseScreenState extends State<DispenseScreen> {
   String _searchQuery = '';
   String _selectedPriority = 'Standard';
   late List<MedicineItem> _items;
-
-  // Track expanded state for each card
+  int _activeTab = 0; // 0: Medicine Dispensing, 1: Facility Beds & Staff, 2: Stock Transfers
+  bool _isLoading = true;
+  String _currentPhcId = 'PHC-D01-01';
   final Map<String, bool> _expandedMap = {};
+
+  // Capacity & Staff State
+  int _bedCapacity = 10;
+  int _occupiedBeds = 4;
+  int _doctorsPresent = 2;
+  int _nursesPresent = 4;
+  bool _isSyncingCapacity = false;
 
   @override
   void initState() {
     super.initState();
+    _currentPhcId = AuthController().phcId;
+    _phcName = AuthController().phcName;
     _items = MedicineItem.getInitialMockData();
+    _loadInventoryFromApi();
+  }
+
+  String _phcName = 'PHC Loddaputti';
+  String _phcSub = 'Mandal Ichchapuram • Primary Care Supply Node';
+
+  Future<void> _loadInventoryFromApi({String? search}) async {
+    setState(() => _isLoading = true);
+    
+    // First verify available PHCs from backend
+    final phcList = await ApiService.fetchPHCs();
+    if (phcList.isNotEmpty) {
+      final matchedPhc = phcList.firstWhere((p) => p['id'] == _currentPhcId, orElse: () => phcList.first);
+      _currentPhcId = matchedPhc['id'];
+      _phcName = matchedPhc['name'] ?? 'Primary Health Center';
+      _phcSub = 'Mandal ${matchedPhc['mandal_name'] ?? 'Central'} • ${matchedPhc['district_name'] ?? 'District'} Supply Node';
+      
+      if (matchedPhc['bed_capacity'] != null) {
+        _bedCapacity = matchedPhc['bed_capacity'];
+        _occupiedBeds = matchedPhc['occupied_beds'] ?? 4;
+        _doctorsPresent = matchedPhc['doctors_present'] ?? 2;
+        _nursesPresent = matchedPhc['nurses_present'] ?? 4;
+      }
+    }
+
+    final rawData = await ApiService.fetchInventoryLedger(_currentPhcId, search: search);
+    if (rawData.isNotEmpty) {
+      final loaded = rawData.map((j) => MedicineItem.fromJson(j)).toList();
+      setState(() {
+        _items = loaded;
+        _isLoading = false;
+      });
+    } else {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _syncCapacityToCloud() async {
+    setState(() => _isSyncingCapacity = true);
+    final res = await ApiService.updateCapacityStatus(
+      phcId: _currentPhcId,
+      occupiedBeds: _occupiedBeds,
+      doctorsPresent: _doctorsPresent,
+      nursesPresent: _nursesPresent,
+    );
+    if (!mounted) return;
+    setState(() => _isSyncingCapacity = false);
+
+    final msg = res['message'] ?? 'Capacity & Attendance synced successfully';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.cloud_done_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        backgroundColor: AppColors.purpleAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -40,7 +114,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
     _applyDispense(item, count);
   }
 
-  void _applyDispense(MedicineItem item, int count) {
+  Future<void> _applyDispense(MedicineItem item, int count) async {
     setState(() {
       final index = _items.indexWhere((i) => i.id == item.id);
       if (index != -1) {
@@ -49,21 +123,31 @@ class _DispenseScreenState extends State<DispenseScreen> {
       }
     });
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text('Dispensed $count ${item.unitLabel} of ${item.name}'),
-          ],
-        ),
-        backgroundColor: AppColors.textPrimary,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
+    final res = await ApiService.dispenseMedicine(
+      phcId: _currentPhcId,
+      medicineId: item.id,
+      quantity: count,
     );
+
+    final msg = res['message'] ?? 'Dispensed $count ${item.unitLabel} of ${item.name}';
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(msg)),
+            ],
+          ),
+          backgroundColor: AppColors.textPrimary,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _showPatientCaseIdModal(MedicineItem item, int count) {
@@ -227,9 +311,9 @@ class _DispenseScreenState extends State<DispenseScreen> {
           const SizedBox(height: 4),
 
           // PHC Rampur
-          const Text(
-            'PHC Rampur',
-            style: TextStyle(
+          Text(
+            _phcName,
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
@@ -239,56 +323,157 @@ class _DispenseScreenState extends State<DispenseScreen> {
           const SizedBox(height: 2),
 
           // Subtitle
-          const Text(
-            'Mandal Warangal • Sector 4 Supply Node',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            _phcSub,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
 
-          // Bed / Staff Status Pill
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.circle, size: 7, color: AppColors.greenDot),
-                SizedBox(width: 8),
-                Text.rich(
-                  TextSpan(
+          // Executive Summary KPI Cards
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: Row(
                     children: [
-                      TextSpan(
-                        text: '18/24 Beds Available',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '  •  ',
-                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                      ),
-                      TextSpan(
-                        text: '3/4 Staff on Duty',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                      const Icon(Icons.warning_amber_rounded, size: 20, color: AppColors.redDark),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Stock Alerts', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                            Text('${_items.where((i) => i.hasRedBorder).length} Low', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.redText)),
+                          ],
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.king_bed_outlined, size: 20, color: AppColors.primaryBlue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Beds Available', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                            Text('${(_bedCapacity - _occupiedBeds).clamp(0, 99)} / $_bedCapacity', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.people_alt_outlined, size: 20, color: AppColors.purpleAccent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Staff On Duty', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                            Text('${_doctorsPresent + _nursesPresent} Active', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Section Tabs Navigation
+          Container(
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _activeTab = 0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _activeTab == 0 ? AppColors.purpleLight : Colors.transparent,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.medication_outlined, size: 16, color: _activeTab == 0 ? AppColors.purpleAccent : AppColors.textSecondary),
+                            const SizedBox(width: 6),
+                            Text('Dispense & Stock', style: TextStyle(fontSize: 12, fontWeight: _activeTab == 0 ? FontWeight.w700 : FontWeight.w500, color: _activeTab == 0 ? AppColors.purpleAccent : AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _activeTab = 1),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _activeTab == 1 ? AppColors.purpleLight : Colors.transparent,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.king_bed_outlined, size: 16, color: _activeTab == 1 ? AppColors.purpleAccent : AppColors.textSecondary),
+                            const SizedBox(width: 6),
+                            Text('Facility Beds & Staff', style: TextStyle(fontSize: 12, fontWeight: _activeTab == 1 ? FontWeight.w700 : FontWeight.w500, color: _activeTab == 1 ? AppColors.purpleAccent : AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 14),
+
+          // TAB CONTENT VIEWS
+          if (_activeTab == 1)
+            _buildFacilityCapacityTab()
+          else ...[
 
           // Search Bar
           Container(
@@ -435,6 +620,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          ],
         ],
       ),
     );
@@ -733,7 +919,69 @@ class _DispenseScreenState extends State<DispenseScreen> {
               ),
             ],
           ),
+          if (item.hasRedBorder || item.availableUnits < 200) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 32,
+              child: OutlinedButton.icon(
+                onPressed: () => _handleEmergencyRequisition(item),
+                icon: const Icon(Icons.send_rounded, size: 14, color: AppColors.redText),
+                label: const Text(
+                  '🚨 Notify District Portal Queue (Request Emergency Stock)',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.redText),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.redDark, width: 1.2),
+                  backgroundColor: AppColors.redDark.withValues(alpha: 0.05),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Future<void> _handleEmergencyRequisition(MedicineItem item) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+            const SizedBox(width: 10),
+            Text('Sending emergency requisition for ${item.name} to District Queue...'),
+          ],
+        ),
+        backgroundColor: AppColors.textPrimary,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    final res = await ApiService.requestEmergencyStock(
+      phcId: _currentPhcId,
+      medicineId: item.id,
+      requestedQuantity: 500,
+      reason: '🚨 LOW STOCK ALERT at $_phcName: ${item.name} cover remaining critical (${item.statusBadgeText}).',
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    final msg = res['message'] ?? 'Requisition pushed to District Queue!';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        backgroundColor: res['success'] == true ? AppColors.purpleAccent : Colors.redAccent,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -752,6 +1000,193 @@ class _DispenseScreenState extends State<DispenseScreen> {
           child: Text(
             value,
             style: const TextStyle(fontSize: 10, color: AppColors.textPrimary),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFacilityCapacityTab() {
+    final availableBeds = (_bedCapacity - _occupiedBeds).clamp(0, 99);
+    final occupancyPct = (_occupiedBeds / (_bedCapacity <= 0 ? 1 : _bedCapacity)).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Bed Occupancy Section
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.king_bed_rounded, color: AppColors.primaryBlue, size: 22),
+                      SizedBox(width: 8),
+                      Text(
+                        'Hospital Bed Occupancy',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: availableBeds > 2 ? AppColors.greenDot.withValues(alpha: 0.12) : AppColors.redDark.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$availableBeds Beds Available',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: availableBeds > 2 ? AppColors.greenText : AppColors.redText,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: LinearProgressIndicator(
+                  value: occupancyPct,
+                  backgroundColor: AppColors.background,
+                  color: occupancyPct > 0.85 ? AppColors.redDark : AppColors.primaryBlue,
+                  minHeight: 10,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Occupied Beds: $_occupiedBeds / $_bedCapacity Total',
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, size: 24, color: AppColors.textSecondary),
+                        onPressed: () {
+                          if (_occupiedBeds > 0) setState(() => _occupiedBeds--);
+                        },
+                      ),
+                      Text('$_occupiedBeds', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, size: 24, color: AppColors.primaryBlue),
+                        onPressed: () {
+                          if (_occupiedBeds < _bedCapacity) setState(() => _occupiedBeds++);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Staff Attendance Section
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.badge_outlined, color: AppColors.purpleAccent, size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'On-Duty Personnel Tracker',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Doctors Present
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Doctors Present on Duty:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, size: 22, color: AppColors.textSecondary),
+                        onPressed: () {
+                          if (_doctorsPresent > 0) setState(() => _doctorsPresent--);
+                        },
+                      ),
+                      Text('$_doctorsPresent', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, size: 22, color: AppColors.purpleAccent),
+                        onPressed: () {
+                          setState(() => _doctorsPresent++);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const Divider(height: 14, color: AppColors.borderSubtle),
+
+              // Nurses Present
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Nurses Present on Duty:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, size: 22, color: AppColors.textSecondary),
+                        onPressed: () {
+                          if (_nursesPresent > 0) setState(() => _nursesPresent--);
+                        },
+                      ),
+                      Text('$_nursesPresent', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, size: 22, color: AppColors.purpleAccent),
+                        onPressed: () {
+                          setState(() => _nursesPresent++);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Sync Button
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: ElevatedButton.icon(
+                  onPressed: _isSyncingCapacity ? null : _syncCapacityToCloud,
+                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                  label: Text(_isSyncingCapacity ? 'Syncing Status...' : 'Sync Attendance & Capacity to Cloud'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.purpleAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

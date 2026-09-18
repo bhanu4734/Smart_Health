@@ -16,9 +16,11 @@ class TransferDirective {
   final String confidenceTitle;
   final String confidenceBadge;
   final String confidenceNote;
+  final String? id;
   bool isApproved;
 
   TransferDirective({
+    this.id,
     required this.directiveNumber,
     required this.statusBadge,
     this.isCriticalStatus = false,
@@ -38,6 +40,41 @@ class TransferDirective {
     required this.confidenceNote,
     this.isApproved = false,
   });
+
+  factory TransferDirective.fromJson(Map<String, dynamic> json) {
+    final status = json['status'] ?? 'pending';
+    final isApproved = status == 'approved';
+    final distance = (json['distance_km'] as num?)?.toDouble() ?? 15.0;
+    final eta = json['eta_mins'] ?? (distance * 1.8).round();
+    final qty = json['quantity'] ?? 50;
+    final medName = json['medicine_name'] ?? json['medicine_id'] ?? 'Essential Medicine';
+    final srcName = json['source_phc_name'] ?? json['source_phc_id'] ?? 'Source PHC';
+    final tgtName = json['target_phc_name'] ?? json['target_phc_id'] ?? 'Target PHC';
+    final conf = (json['ai_confidence_pct'] as num?)?.toInt() ?? 94;
+    final idStr = json['id'] ?? 'TR-001';
+
+    return TransferDirective(
+      id: idStr,
+      directiveNumber: 'Directive #$idStr',
+      statusBadge: isApproved ? 'Approved & En Route' : 'Zero-Stock Imminent',
+      isCriticalStatus: !isApproved,
+      riskInfo: 'SciPy OR Optimization Directive',
+      title: '$medName • $qty Units',
+      description: json['reason'] ?? 'Automated operations research linear sum assignment optimization.',
+      originName: srcName,
+      originSubtitle: 'Surplus Reserve',
+      targetName: tgtName,
+      targetSubtitle: 'Critical Stockout Deficit',
+      isTargetCritical: true,
+      transitDetails: '$distance km • ETA: $eta mins • Cold-Chain Verified',
+      transitTypeLabel: 'Transit Corridor',
+      confidencePercent: conf,
+      confidenceTitle: '$conf% AI Confidence',
+      confidenceBadge: 'SciPy Optimization Engine',
+      confidenceNote: json['reason'] ?? 'Redistribution balances stockout risk across district facilities.',
+      isApproved: isApproved,
+    );
+  }
 
   static List<TransferDirective> getInitialMockData() {
     return [

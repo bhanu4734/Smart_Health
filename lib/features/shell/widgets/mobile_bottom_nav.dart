@@ -4,11 +4,13 @@ import '../../../app/app_theme.dart';
 class MobileBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final List<Map<String, dynamic>> items;
 
   const MobileBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    required this.items,
   });
 
   @override
@@ -25,28 +27,15 @@ class MobileBottomNav extends StatelessWidget {
         top: false,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(
-              index: 0,
-              icon: Icons.local_pharmacy_rounded,
-              label: 'Dispense',
-            ),
-            _buildNavItem(
-              index: 1,
-              icon: Icons.grid_view_rounded,
-              label: 'Command',
-            ),
-            _buildNavItem(
-              index: 2,
-              icon: Icons.swap_horiz_rounded,
-              label: 'Transfers',
-            ),
-            _buildNavItem(
-              index: 3,
-              icon: Icons.auto_graph_rounded,
-              label: 'Analytics',
-            ),
-          ],
+          children: items.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final item = entry.value;
+            return _buildNavItem(
+              index: idx,
+              icon: item['icon'] as IconData,
+              label: item['label'] as String,
+            );
+          }).toList(),
         ),
       ),
     );

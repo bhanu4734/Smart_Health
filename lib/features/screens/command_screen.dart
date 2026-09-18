@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_theme.dart';
 import '../../core/widgets/app_card.dart';
 import '../../shared/models/command_node.dart';
+import '../../services/api_service.dart';
 
 class CommandScreen extends StatefulWidget {
   const CommandScreen({super.key});
@@ -13,27 +14,86 @@ class CommandScreen extends StatefulWidget {
 class _CommandScreenState extends State<CommandScreen> {
   late List<CommandNode> _nodes;
   bool _isCrisisSimulated = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _nodes = CommandNode.getInitialMockData();
+    _loadNodesFromApi();
   }
 
-  void _handleEmergencyReroute() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.local_shipping_outlined, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('Emergency Reroute Dispatched from CHC Narsampet (450 units)'),
-          ],
+  String _districtTitle = 'Srikakulam District Command';
+
+  Future<void> _loadNodesFromApi() async {
+    setState(() => _isLoading = true);
+    final rawData = await ApiService.fetchPHCs();
+    if (rawData.isNotEmpty) {
+      final loaded = rawData.map((j) => CommandNode.fromJson(j)).toList();
+      final distName = rawData.first['district_name'] ?? 'State';
+      setState(() {
+        _districtTitle = '$distName Health Sector Command';
+        _nodes = loaded.take(6).toList(); // Show top nodes
+        _isLoading = false;
+      });
+    } else {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleEmergencyReroute() async {
+    final res = await ApiService.executeOptimizer();
+    final msg = res['message'] ?? 'Emergency Reroute Dispatched via SciPy Optimizer';
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.local_shipping_outlined, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(msg)),
+            ],
+          ),
+          backgroundColor: AppColors.redDark,
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: AppColors.redDark,
+      );
+    }
+  }
+
+  void _triggerFederatedLearning() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🌐 Initiating Sovereign Federated Learning across district silos...'),
+        duration: Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
     );
+
+    final res = await ApiService.executeFederatedLearning(numDistricts: 5, numRounds: 3);
+    final msg = res['message'] ?? 'Federated Learning simulation completed!';
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          title: const Row(
+            children: [
+              Icon(Icons.hub_rounded, color: AppColors.primaryBlue, size: 22),
+              SizedBox(width: 8),
+              Text('Federated Learning Completed', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          content: Text(msg, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _showSimulateCrisisDialog() {
@@ -49,7 +109,7 @@ class _CommandScreenState extends State<CommandScreen> {
           ],
         ),
         content: const Text(
-          'Simulate a sudden spike in canine bites across Warangal rural sectors. This will trigger automated reallocation directives and prioritize Anti-Rabies cold-chain buffer stock.',
+          'Simulate a sudden spike in disease outbreaks across rural sectors. This will trigger automated SciPy reallocation directives and deplete buffer stock.',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         actions: [
@@ -58,16 +118,22 @@ class _CommandScreenState extends State<CommandScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(dialogCtx).pop();
               setState(() => _isCrisisSimulated = true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Crisis alert active: 2 Emergency Transfer Directives created!'),
-                  backgroundColor: AppColors.redDark,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              final outRes = await ApiService.injectOutbreak(surgeFactor: 3.0);
+              await ApiService.executeOptimizer();
+              await _loadNodesFromApi();
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(outRes['message'] ?? 'Crisis alert active: Stockout emergency injected!'),
+                    backgroundColor: AppColors.redDark,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.redDark,
@@ -98,9 +164,9 @@ class _CommandScreenState extends State<CommandScreen> {
           ),
           const SizedBox(height: 4),
 
-          // Warangal District Command
-          const Text(
-            'Warangal District Command',
+          // District Command Heading
+          Text(
+            _districtTitle,
             style: AppTextStyles.pageHeading,
           ),
           const SizedBox(height: 10),
@@ -320,38 +386,64 @@ class _CommandScreenState extends State<CommandScreen> {
 
           const SizedBox(height: 12),
 
-          // Simulate Outbreak / Crisis button at bottom
-          Center(
-            child: SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: OutlinedButton.icon(
-                onPressed: _showSimulateCrisisDialog,
-                icon: const Text(
-                  '*',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.redText,
+          // Action buttons: Simulate Outbreak & Federated Learning
+          Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: OutlinedButton.icon(
+                  onPressed: _showSimulateCrisisDialog,
+                  icon: const Text(
+                    '*',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.redText,
+                    ),
                   ),
-                ),
-                label: const Text(
-                  'Simulate Outbreak / Crisis',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.redDark,
+                  label: const Text(
+                    'Simulate Outbreak / Crisis',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.redDark,
+                    ),
                   ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: AppColors.redBorder, width: 1.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: AppColors.redBorder, width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
                   ),
                 ),
               ),
-            ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: ElevatedButton.icon(
+                  onPressed: _triggerFederatedLearning,
+                  icon: const Icon(Icons.hub_rounded, size: 18),
+                  label: const Text(
+                    'Execute Sovereign Federated Learning (FedAvg)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
         ],

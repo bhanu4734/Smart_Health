@@ -29,6 +29,38 @@ class CommandNode {
     this.medicalOfficer,
   });
 
+  factory CommandNode.fromJson(Map<String, dynamic> json) {
+    final statusColor = json['status_color'] ?? 'green';
+    NodeStatusType statusType = NodeStatusType.surplus;
+    if (statusColor == 'red') {
+      statusType = NodeStatusType.critical;
+    } else if (statusColor == 'yellow') {
+      statusType = NodeStatusType.warning;
+    }
+
+    final details = json['details'] ?? {};
+    final occBeds = details['occupied_beds'] ?? 4;
+    final totalBeds = details['bed_capacity'] ?? 10;
+    final occPct = totalBeds > 0 ? ((occBeds / totalBeds) * 100).round() : 50;
+
+    final lowStock = (json['low_stock_count'] as num?)?.toInt() ?? 0;
+
+    return CommandNode(
+      id: json['id'] ?? '',
+      name: json['name'] ?? 'PHC Unit',
+      distanceSector: '${json['mandal_name'] ?? 'Sector'}, ${json['district_name'] ?? ''} • Pin: ${json['pincode'] ?? ''}',
+      badgeText: statusType == NodeStatusType.critical ? '$lowStock Stockouts' : (statusType == NodeStatusType.warning ? 'Warning Stock' : 'Surplus Reserve'),
+      statusType: statusType,
+      isExpanded: statusType == NodeStatusType.critical,
+      depletedSupplies: lowStock > 0 ? 'Essential Stock Threshold Reached' : null,
+      recommendedDonor: 'Regional District Depot Hub',
+      coldChain: '4.0°C (Verified)',
+      occupancy: '$occPct% ($occBeds/$totalBeds beds)',
+      transitEta: '25 mins',
+      medicalOfficer: 'Dr. On-Duty (${details['doctors_present'] ?? 2} Doctors, ${details['nurses_present'] ?? 4} Nurses)',
+    );
+  }
+
   static List<CommandNode> getInitialMockData() {
     return [
       CommandNode(

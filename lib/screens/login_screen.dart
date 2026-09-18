@@ -18,12 +18,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePin = true;
   bool _rememberTerminal = true;
   bool _isLoading = false;
-  String _selectedRole = 'Pharmacist Officer';
+  String _selectedRole = 'PHC Manager';
 
   final List<String> _roles = [
-    'Pharmacist Officer',
-    'Medical Officer (MO)',
-    'Staff Nurse / Dispenser',
+    'PHC Manager',
+    'District Health Officer / Admin',
   ];
 
   @override

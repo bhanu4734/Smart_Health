@@ -67,6 +67,38 @@ class MedicineItem {
     );
   }
 
+  factory MedicineItem.fromJson(Map<String, dynamic> json) {
+    final riskStr = (json['risk_level'] ?? 'SAFE').toString().toUpperCase();
+    StockStatusType statusType = StockStatusType.safe;
+    if (riskStr == 'CRITICAL') {
+      statusType = StockStatusType.critical;
+    } else if (riskStr == 'WARNING') {
+      statusType = StockStatusType.warning;
+    }
+
+    final daysBadge = json['days_cover_badge'] ?? '${json['days_remaining'] ?? 0}d cover';
+    final isEmergency = (json['category'] ?? '').toString().toUpperCase().contains('EMERGENCY') ||
+        (json['medicine_name'] ?? '').toString().toUpperCase().contains('RABIES') ||
+        statusType == StockStatusType.critical;
+
+    return MedicineItem(
+      id: json['medicine_id'] ?? '',
+      category: (json['category'] ?? 'GENERAL').toString().toUpperCase(),
+      name: json['medicine_name'] ?? json['brand_name'] ?? '',
+      formDescription: '${json['generic_name'] ?? json['medicine_name']} • ${json['unit'] ?? 'units'}',
+      availableUnits: (json['current_stock'] as num?)?.toInt() ?? 0,
+      unitLabel: json['unit'] ?? 'units',
+      statusBadgeText: '${statusType == StockStatusType.critical ? 'Critical' : (statusType == StockStatusType.warning ? 'Warning' : 'Safe')} ($daysBadge)',
+      statusType: statusType,
+      footerText: isEmergency ? 'Requires Patient Case ID' : 'Ready for dispense',
+      hasRedBorder: isEmergency,
+      batchNumber: json['batch_number'] ?? 'BATCH-${json['medicine_id']}',
+      expiryDate: json['expiry_date'] ?? '12/2027',
+      storage: (json['category'] ?? '').toString().toLowerCase().contains('vaccine') || (json['category'] ?? '').toString().toLowerCase().contains('rabies') ? 'Cold chain 2-8°C required' : 'Store in cool dry place',
+      priority: statusType == StockStatusType.critical ? 'Triage' : 'Standard',
+    );
+  }
+
   static List<MedicineItem> getInitialMockData() {
     return [
       MedicineItem(
