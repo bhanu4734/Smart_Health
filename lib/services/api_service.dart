@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Configurable API base URL (localhost for desktop/web, 10.0.2.2 for Android Emulator)
-  static String baseUrl = 'http://127.0.0.1:8000/api';
+  // Configurable API base URL (Use PC Wi-Fi IP 192.168.0.241 for physical mobile debugging, 127.0.0.1 for desktop)
+  static String baseUrl = 'http://192.168.0.241:8000/api';
 
   // 1. Fetch All PHCs
   static Future<List<dynamic>> fetchPHCs({String? districtId, String? search}) async {
@@ -170,9 +170,13 @@ class ApiService {
   }
 
   // 8. Approve Stock Transfer Directive
-  static Future<Map<String, dynamic>> approveTransfer(String transferId) async {
+  static Future<Map<String, dynamic>> approveTransfer(String transferId, {int? overrideQuantity}) async {
     try {
-      final uri = Uri.parse('$baseUrl/redistribution/approve-transfer?transfer_id=$transferId');
+      String url = '$baseUrl/redistribution/approve-transfer?transfer_id=$transferId';
+      if (overrideQuantity != null && overrideQuantity > 0) {
+        url += '&override_quantity=$overrideQuantity';
+      }
+      final uri = Uri.parse(url);
       final response = await http.post(uri);
 
       if (response.statusCode == 200) {
@@ -291,5 +295,22 @@ class ApiService {
       print('ApiService.requestEmergencyStock error: $e');
     }
     return {'success': false, 'message': 'Network error during emergency stock request'};
+  }
+
+  // 13. Fetch District Analytics Summary
+  static Future<Map<String, dynamic>> fetchDistrictSummary({String? districtId}) async {
+    try {
+      Uri uri = Uri.parse('$baseUrl/analytics/district-summary');
+      if (districtId != null && districtId.isNotEmpty) {
+        uri = uri.replace(queryParameters: {'district_id': districtId});
+      }
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      print('ApiService.fetchDistrictSummary error: $e');
+    }
+    return {};
   }
 }

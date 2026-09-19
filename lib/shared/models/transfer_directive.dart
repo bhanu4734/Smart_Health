@@ -3,7 +3,7 @@ class TransferDirective {
   final String statusBadge;
   final bool isCriticalStatus;
   final String riskInfo;
-  final String title;
+  String title;
   final String description;
   final String originName;
   final String originSubtitle;
@@ -17,6 +17,7 @@ class TransferDirective {
   final String confidenceBadge;
   final String confidenceNote;
   final String? id;
+  int quantity;
   bool isApproved;
 
   TransferDirective({
@@ -38,6 +39,7 @@ class TransferDirective {
     required this.confidenceTitle,
     required this.confidenceBadge,
     required this.confidenceNote,
+    this.quantity = 500,
     this.isApproved = false,
   });
 
@@ -46,7 +48,7 @@ class TransferDirective {
     final isApproved = status == 'approved';
     final distance = (json['distance_km'] as num?)?.toDouble() ?? 15.0;
     final eta = json['eta_mins'] ?? (distance * 1.8).round();
-    final qty = json['quantity'] ?? 50;
+    final qty = (json['quantity'] as num?)?.toInt() ?? 500;
     final medName = json['medicine_name'] ?? json['medicine_id'] ?? 'Essential Medicine';
     final srcName = json['source_phc_name'] ?? json['source_phc_id'] ?? 'Source PHC';
     final tgtName = json['target_phc_name'] ?? json['target_phc_id'] ?? 'Target PHC';
@@ -72,6 +74,7 @@ class TransferDirective {
       confidenceTitle: '$conf% AI Confidence',
       confidenceBadge: 'SciPy Optimization Engine',
       confidenceNote: json['reason'] ?? 'Redistribution balances stockout risk across district facilities.',
+      quantity: qty,
       isApproved: isApproved,
     );
   }
@@ -98,6 +101,7 @@ class TransferDirective {
         confidenceBadge: 'Epidemic Vector Validated',
         confidenceNote:
             'Algorithmic risk mitigation scores canine attack surge in Mandal Area 4.',
+        quantity: 45,
       ),
       TransferDirective(
         directiveNumber: 'Directive #DR-9025',
@@ -120,6 +124,7 @@ class TransferDirective {
         confidenceBadge: 'Climatic Historical Align',
         confidenceNote:
             'Cross-referenced against 5-year monsoon onset morbidity records.',
+        quantity: 600,
       ),
     ];
   }

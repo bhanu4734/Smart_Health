@@ -129,6 +129,9 @@ class _DispenseScreenState extends State<DispenseScreen> {
       quantity: count,
     );
 
+    // Live refresh inventory ledger straight from database to update days cover
+    await _loadInventoryFromApi();
+
     final msg = res['message'] ?? 'Dispensed $count ${item.unitLabel} of ${item.name}';
 
     if (mounted) {
@@ -528,7 +531,6 @@ class _DispenseScreenState extends State<DispenseScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           // Dispensing Ledger & Priority toggle
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -588,10 +590,13 @@ class _DispenseScreenState extends State<DispenseScreen> {
           const SizedBox(height: 14),
 
           // Medicine Cards List
-          ...filtered.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildMedicineCard(item),
-              )),
+          if (_isLoading)
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+          else
+            ...filtered.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildMedicineCard(item),
+                )),
 
           const SizedBox(height: 12),
 
@@ -620,10 +625,10 @@ class _DispenseScreenState extends State<DispenseScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ],
         ],
-      ),
-    );
+      ],
+    ),
+  );
   }
 
   Widget _buildPriorityItem(String priority) {
@@ -945,13 +950,107 @@ class _DispenseScreenState extends State<DispenseScreen> {
   }
 
   Future<void> _handleEmergencyRequisition(MedicineItem item) async {
+    final qtyController = TextEditingController(text: '500');
+    final reasonController = TextEditingController(
+      text: '🚨 LOW STOCK ALERT at $_phcName: ${item.name} cover remaining critical (${item.statusBadgeText}).',
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        title: const Row(
+          children: [
+            Icon(Icons.add_alert_rounded, color: AppColors.redText, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Emergency Stock Requisition',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Medicine: ${item.name} (${item.category})',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Current Available Stock: ${item.availableUnits} ${item.unitLabel}',
+              style: const TextStyle(fontSize: 11, color: AppColors.redText, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Requested Unit Quantity:',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: qtyController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Units to Request / Re-arrange',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              children: [
+                ActionChip(label: const Text('200 units'), onPressed: () => qtyController.text = '200'),
+                ActionChip(label: const Text('500 units'), onPressed: () => qtyController.text = '500'),
+                ActionChip(label: const Text('1000 units'), onPressed: () => qtyController.text = '1000'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Clinical Justification / Reason',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final requestedQty = int.tryParse(qtyController.text.trim()) ?? 500;
+              final reason = reasonController.text.trim();
+              Navigator.of(dialogCtx).pop();
+              await _submitEmergencyRequisition(item, requestedQty, reason);
+            },
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('Submit Requisition'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.redDark,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitEmergencyRequisition(MedicineItem item, int requestedQty, String reason) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
             const SizedBox(width: 10),
-            Text('Sending emergency requisition for ${item.name} to District Queue...'),
+            Text('Sending emergency requisition for $requestedQty units of ${item.name}...'),
           ],
         ),
         backgroundColor: AppColors.textPrimary,
@@ -962,8 +1061,8 @@ class _DispenseScreenState extends State<DispenseScreen> {
     final res = await ApiService.requestEmergencyStock(
       phcId: _currentPhcId,
       medicineId: item.id,
-      requestedQuantity: 500,
-      reason: '🚨 LOW STOCK ALERT at $_phcName: ${item.name} cover remaining critical (${item.statusBadgeText}).',
+      requestedQuantity: requestedQty,
+      reason: reason,
     );
 
     if (!mounted) return;

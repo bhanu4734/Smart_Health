@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Core Backgrounds
-  static const Color background = Color(0xFFF6F7FB);
+  // Core Backgrounds (Soft modern neutral gray)
+  static const Color background = Color(0xFFF3F3F5);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceMuted = Color(0xFFF8FAFC);
+  static const Color surfaceMuted = Color(0xFFF7F7F9);
+  static const Color sidebarBg = Color(0xFFECECEE);
 
-  // Purple Accent (Signature border & active brand)
+  // Brand Accents
   static const Color purpleAccent = Color(0xFF5B5CE2);
   static const Color purpleLight = Color(0xFFEEF0FD);
   static const Color purpleHover = Color(0xFF4A4BC8);
@@ -36,14 +37,14 @@ class AppColors {
   static const Color redDark = Color(0xFFB91C1C);
 
   // Text Hierarchy
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color textMuted = Color(0xFF94A3B8);
+  static const Color textPrimary = Color(0xFF111827);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textMuted = Color(0xFF9CA3AF);
 
   // Borders & Dividers
-  static const Color borderSubtle = Color(0xFFE2E8F0);
+  static const Color borderSubtle = Color(0xFFE5E7EB);
   static const Color borderCard = Color(0xFFE5E7EB);
-  static const Color borderLight = Color(0xFFEEF2F6);
+  static const Color borderLight = Color(0xFFF3F4F6);
 }
 
 class AppSpacing {
@@ -56,10 +57,10 @@ class AppSpacing {
 }
 
 class AppRadius {
-  static const double sm = 6.0;
-  static const double md = 10.0;
-  static const double lg = 14.0;
-  static const double xl = 16.0;
+  static const double sm = 8.0;
+  static const double md = 12.0;
+  static const double lg = 16.0;
+  static const double xl = 20.0;
   static const double pill = 999.0;
 }
 

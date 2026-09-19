@@ -4,6 +4,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/confidence_gauge.dart';
 import '../../shared/models/transfer_directive.dart';
 import '../../services/api_service.dart';
+import '../auth/controllers/auth_controller.dart';
 
 class TransfersScreen extends StatefulWidget {
   const TransfersScreen({super.key});
@@ -50,13 +51,19 @@ class _TransfersScreenState extends State<TransfersScreen> {
     }
   }
 
-  Future<void> _approveDirective(TransferDirective directive) async {
+  Future<void> _approveDirective(TransferDirective directive, {int? overrideQuantity}) async {
+    final finalQty = overrideQuantity ?? directive.quantity;
     if (directive.id != null) {
-      await ApiService.approveTransfer(directive.id!);
+      await ApiService.approveTransfer(directive.id!, overrideQuantity: finalQty);
     }
 
     setState(() {
       _directives.removeWhere((d) => d.directiveNumber == directive.directiveNumber || d.id == directive.id);
+      directive.quantity = finalQty;
+      if (directive.title.contains('•')) {
+        final medName = directive.title.split('•').first.trim();
+        directive.title = '$medName • $finalQty Units';
+      }
       directive.isApproved = true;
       _approvedDirectives.insert(0, directive);
     });
@@ -68,7 +75,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
             children: [
               const Icon(Icons.verified_outlined, color: Colors.white, size: 18),
               const SizedBox(width: 8),
-              Text('Signed & Approved ${directive.directiveNumber}'),
+              Expanded(child: Text('Signed & Approved ${directive.directiveNumber} ($finalQty units dispatched)')),
             ],
           ),
           backgroundColor: AppColors.primaryBlue,
@@ -76,6 +83,86 @@ class _TransfersScreenState extends State<TransfersScreen> {
         ),
       );
     }
+  }
+
+  void _showEditQuantityAndApproveDialog(TransferDirective directive) {
+    final controller = TextEditingController(text: directive.quantity.toString());
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note_rounded, color: AppColors.primaryBlue, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Adjust Transfer Quantity',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Directive: ${directive.directiveNumber}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryBlue),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Route: ${directive.originName.replaceAll('\n', ' ')} ➔ ${directive.targetName.replaceAll('\n', ' ')}',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Count of Units to Re-arrange:',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Unit Count',
+                suffixText: 'units',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              children: [
+                ActionChip(label: const Text('250 units'), onPressed: () => controller.text = '250'),
+                ActionChip(label: const Text('500 units'), onPressed: () => controller.text = '500'),
+                ActionChip(label: const Text('1000 units'), onPressed: () => controller.text = '1000'),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              final newQty = int.tryParse(controller.text.trim()) ?? directive.quantity;
+              Navigator.of(dialogCtx).pop();
+              _approveDirective(directive, overrideQuantity: newQty);
+            },
+            icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+            label: const Text('Confirm & Sign Directive'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showDetailsDialog(TransferDirective directive) {
@@ -98,6 +185,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
             Text('Route: ${directive.transitDetails}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             Text('Model Confidence: ${directive.confidencePercent}%', style: const TextStyle(fontSize: 12, color: AppColors.primaryBlue)),
+            const SizedBox(height: 12),
+            Text('Allocated Quantity: ${directive.quantity} Units', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.purpleAccent)),
           ],
         ),
         actions: [
@@ -205,7 +294,9 @@ class _TransfersScreenState extends State<TransfersScreen> {
           const SizedBox(height: 14),
 
           // Tab contents
-          if (_activeTab == 0) ...[
+          if (_isLoading)
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+          else if (_activeTab == 0) ...[
             if (_directives.isEmpty)
               Container(
                 padding: const EdgeInsets.all(32),
@@ -567,41 +658,101 @@ class _TransfersScreenState extends State<TransfersScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Actions
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 36,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showDetailsDialog(directive),
-                    icon: const Icon(Icons.visibility_outlined, size: 15, color: AppColors.textPrimary),
-                    label: const Text('Review Details', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.borderSubtle),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          // Actions (Role Restricted: Only District Admin can Approve)
+          Builder(
+            builder: (context) {
+              final userRole = AuthController().userRole.toLowerCase();
+              final isAdmin = userRole.contains('admin') || userRole.contains('district');
+
+              if (isAdmin) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showEditQuantityAndApproveDialog(directive),
+                          icon: const Icon(Icons.edit_note_rounded, size: 15, color: AppColors.primaryBlue),
+                          label: const Text('Edit Unit Count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryBlue)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.primaryBlueBorder),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 36,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _approveDirective(directive),
-                    icon: const Icon(Icons.call_split_rounded, size: 15),
-                    label: const Text('Approve Transfer Directive', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _showEditQuantityAndApproveDialog(directive),
+                          icon: const Icon(Icons.call_split_rounded, size: 15),
+                          label: const Text('Approve Transfer Directive', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ],
+                  ],
+                );
+              } else {
+                // PHC Manager View: Track status & Call Hotline if delayed
+                return Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showDetailsDialog(directive),
+                          icon: const Icon(Icons.info_outline_rounded, size: 15, color: AppColors.textPrimary),
+                          label: const Text('View Status', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.borderSubtle),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.phone_in_talk_rounded, color: Colors.white, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Calling District Officer Hotline (+91 98480 22334)...'),
+                                  ],
+                                ),
+                                backgroundColor: AppColors.purpleAccent,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.phone_in_talk_rounded, size: 15),
+                          label: const Text('📞 Call District Hotline', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.purpleAccent,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+            },
           ),
         ],
       ),
