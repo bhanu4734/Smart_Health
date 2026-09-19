@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import '../features/auth/screens/mobile_splash_screen.dart';
 import '../features/auth/screens/welcome_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/shell/screens/main_shell_screen.dart';
 
 class AppRoutes {
-  static const String welcome = '/';
+  static const String splash = '/';
+  static const String welcome = '/welcome';
   static const String login = '/login';
   static const String register = '/register';
   static const String dashboard = '/dashboard';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case splash:
+        return MaterialPageRoute(builder: (_) => const MobileSplashScreen());
       case welcome:
         return MaterialPageRoute(builder: (_) => const WelcomeScreen());
       case login:
@@ -24,7 +28,7 @@ class AppRoutes {
           builder: (_) => MainShellScreen(initialIndex: initialIndex),
         );
       default:
-        return MaterialPageRoute(builder: (_) => const WelcomeScreen());
+        return MaterialPageRoute(builder: (_) => const MobileSplashScreen());
     }
   }
 }

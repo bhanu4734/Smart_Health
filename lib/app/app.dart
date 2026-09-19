@@ -11,7 +11,7 @@ class SmartHealthApp extends StatelessWidget {
       title: 'PHC.Dispensing',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.welcome,
+      initialRoute: AppRoutes.splash,
       onGenerateRoute: AppRoutes.onGenerateRoute,
     );
   }
