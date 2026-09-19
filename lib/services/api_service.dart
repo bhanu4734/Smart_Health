@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Configurable API base URL (Use PC Wi-Fi IP 192.168.0.241 for physical mobile debugging, 127.0.0.1 for desktop)
-  static String baseUrl = 'http://192.168.0.241:8000/api';
+  static String baseUrl = 'https://544a-103-172-4-228.ngrok-free.app/api';
 
   // 1. Fetch All PHCs
   static Future<List<dynamic>> fetchPHCs({String? districtId, String? search}) async {

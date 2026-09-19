@@ -22,10 +22,12 @@ class _LoginScreenState extends State<LoginScreen> {
       TextEditingController(text: AppConstants.demoPassword);
   bool _rememberMe = true;
   bool _isLoading = false;
-  String _role = 'PHC Manager (PHC Level)';
+  String _role = 'PHC Manager';
 
   final List<String> _roles = [
+    'PHC Manager',
     'PHC Manager (PHC Level)',
+    'District Health Officer / Admin',
     'District Health Officer / Admin (District Level)',
   ];
 
@@ -218,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _role,
+                            value: _roles.contains(_role) ? _role : _roles.first,
                             isExpanded: true,
                             icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
                             items: _roles.map((r) {

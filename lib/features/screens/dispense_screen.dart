@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/app_theme.dart';
 import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_card.dart';
 import '../../shared/models/medicine_item.dart';
 import '../../services/api_service.dart';
 import '../auth/controllers/auth_controller.dart';
@@ -18,7 +17,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
   String _searchQuery = '';
   String _selectedPriority = 'Standard';
   late List<MedicineItem> _items;
-  int _activeTab = 0; // 0: Medicine Dispensing, 1: Facility Beds & Staff, 2: Stock Transfers
+  int _activeTab = 0; // 0: Medicine Dispensing, 1: Facility Beds & Staff
   bool _isLoading = true;
   String _currentPhcId = 'PHC-D01-01';
   final Map<String, bool> _expandedMap = {};
@@ -45,7 +44,6 @@ class _DispenseScreenState extends State<DispenseScreen> {
   Future<void> _loadInventoryFromApi({String? search}) async {
     setState(() => _isLoading = true);
     
-    // First verify available PHCs from backend
     final phcList = await ApiService.fetchPHCs();
     if (phcList.isNotEmpty) {
       final matchedPhc = phcList.firstWhere((p) => p['id'] == _currentPhcId, orElse: () => phcList.first);
@@ -62,6 +60,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
     }
 
     final rawData = await ApiService.fetchInventoryLedger(_currentPhcId, search: search);
+    if (!mounted) return;
     if (rawData.isNotEmpty) {
       final loaded = rawData.map((j) => MedicineItem.fromJson(j)).toList();
       setState(() {
@@ -94,7 +93,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
             Expanded(child: Text(msg)),
           ],
         ),
-        backgroundColor: AppColors.purpleAccent,
+        backgroundColor: const Color(0xFF2563EB),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -129,7 +128,6 @@ class _DispenseScreenState extends State<DispenseScreen> {
       quantity: count,
     );
 
-    // Live refresh inventory ledger straight from database to update days cover
     await _loadInventoryFromApi();
 
     final msg = res['message'] ?? 'Dispensed $count ${item.unitLabel} of ${item.name}';
@@ -145,8 +143,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
               Expanded(child: Text(msg)),
             ],
           ),
-          backgroundColor: AppColors.textPrimary,
-          duration: const Duration(seconds: 3),
+          backgroundColor: const Color(0xFF1E293B),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -158,7 +155,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.redText, size: 22),
@@ -214,7 +211,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text(
           'Custom Dispense: ${item.name}',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
@@ -250,7 +247,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.purpleAccent,
+              backgroundColor: const Color(0xFF1E293B),
               foregroundColor: Colors.white,
             ),
             child: const Text('Confirm'),
@@ -276,380 +273,407 @@ class _DispenseScreenState extends State<DispenseScreen> {
   Widget build(BuildContext context) {
     final filtered = _filteredItems;
     final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth >= 600;
-    final hPad = isDesktop ? 28.0 : 16.0;
-    final vPad = isDesktop ? 20.0 : 12.0;
+    final isDesktop = screenWidth >= 800;
+    final hPad = isDesktop ? 32.0 : 16.0;
+    final vPad = isDesktop ? 24.0 : 14.0;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // CLINICAL INVENTORY NODE / Active Session
-          Row(
-            children: const [
-              Text(
-                'CLINICAL INVENTORY NODE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              SizedBox(width: 6),
-              Text('/', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-              SizedBox(width: 6),
-              Text(
-                'Active Session',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
-                  color: AppColors.primaryBlue,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-
-          // PHC Rampur
-          Text(
-            _phcName,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.4,
-            ),
-          ),
-          const SizedBox(height: 2),
-
-          // Subtitle
-          Text(
-            _phcSub,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 12),
-
-          // Executive Summary KPI Cards
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, size: 20, color: AppColors.redDark),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Stock Alerts', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                            Text('${_items.where((i) => i.hasRedBorder).length} Low', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.redText)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.king_bed_outlined, size: 20, color: AppColors.primaryBlue),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Beds Available', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                            Text('${(_bedCapacity - _occupiedBeds).clamp(0, 99)} / $_bedCapacity', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.people_alt_outlined, size: 20, color: AppColors.purpleAccent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Staff On Duty', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                            Text('${_doctorsPresent + _nursesPresent} Active', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Section Tabs Navigation
-          Container(
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _activeTab = 0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _activeTab == 0 ? AppColors.purpleLight : Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.medication_outlined, size: 16, color: _activeTab == 0 ? AppColors.purpleAccent : AppColors.textSecondary),
-                            const SizedBox(width: 6),
-                            Text('Dispense & Stock', style: TextStyle(fontSize: 12, fontWeight: _activeTab == 0 ? FontWeight.w700 : FontWeight.w500, color: _activeTab == 0 ? AppColors.purpleAccent : AppColors.textSecondary)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _activeTab = 1),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _activeTab == 1 ? AppColors.purpleLight : Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.king_bed_outlined, size: 16, color: _activeTab == 1 ? AppColors.purpleAccent : AppColors.textSecondary),
-                            const SizedBox(width: 6),
-                            Text('Facility Beds & Staff', style: TextStyle(fontSize: 12, fontWeight: _activeTab == 1 ? FontWeight.w700 : FontWeight.w500, color: _activeTab == 1 ? AppColors.purpleAccent : AppColors.textSecondary)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // TAB CONTENT VIEWS
-          if (_activeTab == 1)
-            _buildFacilityCapacityTab()
-          else ...[
-
-          // Search Bar
-          Container(
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 12),
-                const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                    decoration: const InputDecoration(
-                      hintText: 'Search medicine or scan barcode',
-                      hintStyle: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
-                    ),
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Simulated barcode scan: MED-8821 detected'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                    setState(() {
-                      _searchController.text = 'MED-8821';
-                      _searchQuery = 'MED-8821';
-                    });
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Icon(
-                      Icons.qr_code_scanner_rounded,
-                      size: 20,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Dispensing Ledger & Priority toggle
+          // ── Header: Context Node & Title ─────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
+                  Row(
+                    children: const [
+                      Text(
+                        'CLINICAL INVENTORY NODE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                      Text('/', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Active Session',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   Text(
-                    'Dispensing Ledger',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                    _phcName,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'Real-time unit decrement and\nimmediate batch validation',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      height: 1.25,
-                    ),
+                    _phcSub,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Priority: ',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.borderSubtle),
+              // Cloud Sync pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: AppColors.borderSubtle),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildPriorityItem('Standard'),
-                          Container(height: 1, color: AppColors.borderLight),
-                          _buildPriorityItem('Triage'),
-                        ],
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.circle, size: 5, color: AppColors.greenDot),
+                    SizedBox(width: 6),
+                    Text(
+                      'Live Local Node',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // ── Executive Summary KPI Cards (3 subtle white cards) ─────────────
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryKpiCard(
+                  icon: Icons.warning_amber_rounded,
+                  iconColor: AppColors.redText,
+                  iconBg: AppColors.redBg,
+                  label: 'Stock Alerts',
+                  value: '${_items.where((i) => i.hasRedBorder).length} Low',
+                  valueColor: AppColors.redText,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSummaryKpiCard(
+                  icon: Icons.king_bed_outlined,
+                  iconColor: const Color(0xFF2563EB),
+                  iconBg: const Color(0xFFEFF6FF),
+                  label: 'Beds Available',
+                  value: '${(_bedCapacity - _occupiedBeds).clamp(0, 99)} / $_bedCapacity',
+                  valueColor: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSummaryKpiCard(
+                  icon: Icons.people_alt_outlined,
+                  iconColor: const Color(0xFF059669),
+                  iconBg: const Color(0xFFECFDF5),
+                  label: 'Staff On Duty',
+                  value: '${_doctorsPresent + _nursesPresent} Active',
+                  valueColor: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // ── Horizontal Pill Tabs (Dispense & Stock | Facility Beds & Staff) ─
+          Row(
+            children: [
+              _buildTabButton(0, Icons.medication_outlined, 'Dispense & Stock'),
+              const SizedBox(width: 8),
+              _buildTabButton(1, Icons.king_bed_outlined, 'Facility Beds & Staff'),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ── TAB CONTENT VIEWS ─────────────────────────────────────────────
+          if (_activeTab == 1)
+            _buildFacilityCapacityTab()
+          else ...[
+            // ── Search & Scan Bar ────────────────────────────────────────────
+            Container(
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.borderSubtle),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 6,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 12),
+                  const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                      decoration: const InputDecoration(
+                        hintText: 'Search medicine by name, category, or barcode...',
+                        hintStyle: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Simulated barcode scan: MED-8821 detected'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                      setState(() {
+                        _searchController.text = 'MED-8821';
+                        _searchQuery = 'MED-8821';
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.qr_code_scanner_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
+            ),
+            const SizedBox(height: 18),
 
-          // Medicine Cards List
-          if (_isLoading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-          else
-            ...filtered.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildMedicineCard(item),
-                )),
-
-          const SizedBox(height: 12),
-
-          // Bottom handle and sync note
-          Center(
-            child: Column(
+            // ── Dispensing Ledger Header & Priority Filter ───────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderSubtle,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Dispensing Ledger',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Real-time unit decrement and immediate batch validation',
+                      style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'PHC Cold-Chain Ledger synced 42 seconds ago',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Priority: ',
+                      style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildPriorityToggle('Standard'),
+                          _buildPriorityToggle('Triage'),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 14),
+
+            // ── Medicine Cards List ──────────────────────────────────────────
+            if (_isLoading)
+              const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+            else
+              ...filtered.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildMedicineCard(item),
+                  )),
+
+            const SizedBox(height: 14),
+
+            // Bottom sync note
+            Center(
+              child: Text(
+                'PHC Cold-Chain Ledger synced 42 seconds ago • All records encrypted',
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
         ],
-      ],
-    ),
-  );
+      ),
+    );
   }
 
-  Widget _buildPriorityItem(String priority) {
+  // ── SUMMARY KPI CARD ─────────────────────────────────────────────────────
+  Widget _buildSummaryKpiCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 17, color: iconColor),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 2),
+                Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: valueColor, letterSpacing: -0.2)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── TAB BUTTON ───────────────────────────────────────────────────────────
+  Widget _buildTabButton(int index, IconData icon, String label) {
+    final isSelected = _activeTab == index;
+    return InkWell(
+      onTap: () => setState(() => _activeTab = index),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: isSelected ? AppColors.borderCard : AppColors.borderSubtle,
+            width: 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: isSelected ? AppColors.textPrimary : AppColors.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── PRIORITY TOGGLE ──────────────────────────────────────────────────────
+  Widget _buildPriorityToggle(String priority) {
     final isSelected = _selectedPriority == priority;
     return InkWell(
       onTap: () => setState(() => _selectedPriority = priority),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        color: isSelected ? AppColors.purpleLight.withValues(alpha: 0.6) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.surfaceMuted : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         child: Text(
           priority,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.purpleAccent : AppColors.textPrimary,
+            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
           ),
         ),
       ),
     );
   }
 
+  // ── MEDICINE CARD ────────────────────────────────────────────────────────
   Widget _buildMedicineCard(MedicineItem item) {
     final isExpanded = _expandedMap[item.id] ?? false;
 
@@ -659,9 +683,9 @@ class _DispenseScreenState extends State<DispenseScreen> {
 
     switch (item.statusType) {
       case StockStatusType.safe:
-        catBg = AppColors.primaryBlueLight;
-        catBorder = AppColors.primaryBlueBorder;
-        catText = AppColors.primaryBlue;
+        catBg = const Color(0xFFEFF6FF);
+        catBorder = const Color(0xFFBFDBFE);
+        catText = const Color(0xFF2563EB);
         break;
       case StockStatusType.warning:
         catBg = AppColors.amberBg;
@@ -701,18 +725,31 @@ class _DispenseScreenState extends State<DispenseScreen> {
         break;
     }
 
-    return AppCard(
-      leftAccentColor: item.hasRedBorder ? AppColors.redDark : null,
-      leftAccentWidth: 4.0,
-      padding: const EdgeInsets.all(14),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: item.hasRedBorder ? AppColors.redBorder : AppColors.borderSubtle,
+          width: item.hasRedBorder ? 1.2 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category tag & ID
+          // Header row: Category & ID
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                 decoration: BoxDecoration(
                   color: catBg,
                   borderRadius: BorderRadius.circular(4),
@@ -721,7 +758,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                 child: Text(
                   item.category,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                     color: catText,
@@ -732,38 +769,35 @@ class _DispenseScreenState extends State<DispenseScreen> {
               Text(
                 'ID: ${item.id}',
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
 
           // Name
           Text(
             item.name,
             style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 2),
 
           // Form description
           Text(
             item.formDescription,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
+            style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
 
-          // Quantity & Safe/Warning/Critical badge
+          // Available Units & Status Pill
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -778,15 +812,16 @@ class _DispenseScreenState extends State<DispenseScreen> {
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       color: item.hasRedBorder ? AppColors.redDark : AppColors.textPrimary,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.6,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 5),
                   Text(
                     item.unitLabel,
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -794,10 +829,10 @@ class _DispenseScreenState extends State<DispenseScreen> {
 
               // Status badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                 decoration: BoxDecoration(
                   color: statusBadgeBg,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(color: statusBadgeBorder, width: 0.8),
                 ),
                 child: Row(
@@ -815,7 +850,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                     Text(
                       item.statusBadgeText,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                         color: statusBadgeText,
                       ),
@@ -825,9 +860,9 @@ class _DispenseScreenState extends State<DispenseScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
 
-          // Details v
+          // Expandable details toggle
           InkWell(
             onTap: () {
               setState(() {
@@ -838,9 +873,10 @@ class _DispenseScreenState extends State<DispenseScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Details',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  'Batch & Storage Details',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                 ),
+                const SizedBox(width: 2),
                 Icon(
                   isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
                   size: 16,
@@ -853,18 +889,18 @@ class _DispenseScreenState extends State<DispenseScreen> {
           if (isExpanded) ...[
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
                 border: Border.all(color: AppColors.borderSubtle),
               ),
               child: Column(
                 children: [
                   _buildDetailRow('Batch', item.batchNumber ?? 'AMX-2026'),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   _buildDetailRow('Expiry', item.expiryDate ?? '11/2027'),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   _buildDetailRow('Storage', item.storage ?? 'Room temperature below 25°C'),
                 ],
               ),
@@ -875,7 +911,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
           const Divider(height: 1, color: AppColors.borderLight),
           const SizedBox(height: 10),
 
-          // Action row
+          // Dispense Actions Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -893,7 +929,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   Text(
                     item.footerText,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w500,
                       color: item.hasRedBorder ? AppColors.redText : AppColors.textSecondary,
                     ),
@@ -924,11 +960,12 @@ class _DispenseScreenState extends State<DispenseScreen> {
               ),
             ],
           ),
+
           if (item.hasRedBorder || item.availableUnits < 200) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              height: 32,
+              height: 34,
               child: OutlinedButton.icon(
                 onPressed: () => _handleEmergencyRequisition(item),
                 icon: const Icon(Icons.send_rounded, size: 14, color: AppColors.redText),
@@ -937,8 +974,8 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.redText),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.redDark, width: 1.2),
-                  backgroundColor: AppColors.redDark.withValues(alpha: 0.05),
+                  side: const BorderSide(color: AppColors.redBorder, width: 1.0),
+                  backgroundColor: AppColors.redBg,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                 ),
               ),
@@ -958,7 +995,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: const Row(
           children: [
             Icon(Icons.add_alert_rounded, color: AppColors.redText, size: 22),
@@ -980,7 +1017,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
             const SizedBox(height: 4),
             Text(
               'Current Available Stock: ${item.availableUnits} ${item.unitLabel}',
-              style: const TextStyle(fontSize: 11, color: AppColors.redText, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 11.5, color: AppColors.redText, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 14),
             const Text(
@@ -1034,7 +1071,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
             icon: const Icon(Icons.send_rounded, size: 16),
             label: const Text('Submit Requisition'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.redDark,
+              backgroundColor: const Color(0xFF1E293B),
               foregroundColor: Colors.white,
             ),
           ),
@@ -1078,7 +1115,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
             Expanded(child: Text(msg)),
           ],
         ),
-        backgroundColor: res['success'] == true ? AppColors.purpleAccent : Colors.redAccent,
+        backgroundColor: res['success'] == true ? const Color(0xFF2563EB) : Colors.redAccent,
         duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
       ),
@@ -1089,16 +1126,16 @@ class _DispenseScreenState extends State<DispenseScreen> {
     return Row(
       children: [
         SizedBox(
-          width: 54,
+          width: 58,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontSize: 10, color: AppColors.textPrimary),
+            style: const TextStyle(fontSize: 10.5, color: AppColors.textPrimary),
           ),
         ),
       ],
@@ -1114,11 +1151,18 @@ class _DispenseScreenState extends State<DispenseScreen> {
       children: [
         // Bed Occupancy Section
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(color: AppColors.borderSubtle),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1128,7 +1172,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                 children: [
                   Row(
                     children: const [
-                      Icon(Icons.king_bed_rounded, color: AppColors.primaryBlue, size: 22),
+                      Icon(Icons.king_bed_rounded, color: Color(0xFF2563EB), size: 22),
                       SizedBox(width: 8),
                       Text(
                         'Hospital Bed Occupancy',
@@ -1139,8 +1183,9 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: availableBeds > 2 ? AppColors.greenDot.withValues(alpha: 0.12) : AppColors.redDark.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      color: availableBeds > 2 ? AppColors.greenBg : AppColors.redBg,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(color: availableBeds > 2 ? AppColors.greenBorder : AppColors.redBorder),
                     ),
                     child: Text(
                       '$availableBeds Beds Available',
@@ -1153,23 +1198,23 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               ClipRRect(
                 borderRadius: BorderRadius.circular(5),
                 child: LinearProgressIndicator(
                   value: occupancyPct,
-                  backgroundColor: AppColors.background,
-                  color: occupancyPct > 0.85 ? AppColors.redDark : AppColors.primaryBlue,
+                  backgroundColor: AppColors.surfaceMuted,
+                  color: occupancyPct > 0.85 ? AppColors.redDark : const Color(0xFF2563EB),
                   minHeight: 10,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Occupied Beds: $_occupiedBeds / $_bedCapacity Total',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                   ),
                   Row(
                     children: [
@@ -1181,7 +1226,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                       ),
                       Text('$_occupiedBeds', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                       IconButton(
-                        icon: const Icon(Icons.add_circle_outline, size: 24, color: AppColors.primaryBlue),
+                        icon: const Icon(Icons.add_circle_outline, size: 24, color: Color(0xFF2563EB)),
                         onPressed: () {
                           if (_occupiedBeds < _bedCapacity) setState(() => _occupiedBeds++);
                         },
@@ -1197,18 +1242,25 @@ class _DispenseScreenState extends State<DispenseScreen> {
 
         // Staff Attendance Section
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(color: AppColors.borderSubtle),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: const [
-                  Icon(Icons.badge_outlined, color: AppColors.purpleAccent, size: 22),
+                  Icon(Icons.badge_outlined, color: Color(0xFF2563EB), size: 22),
                   SizedBox(width: 8),
                   Text(
                     'On-Duty Personnel Tracker',
@@ -1216,7 +1268,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Doctors Present
               Row(
@@ -1233,7 +1285,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                       ),
                       Text('$_doctorsPresent', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                       IconButton(
-                        icon: const Icon(Icons.add_circle_outline, size: 22, color: AppColors.purpleAccent),
+                        icon: const Icon(Icons.add_circle_outline, size: 22, color: Color(0xFF2563EB)),
                         onPressed: () {
                           setState(() => _doctorsPresent++);
                         },
@@ -1259,7 +1311,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                       ),
                       Text('$_nursesPresent', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                       IconButton(
-                        icon: const Icon(Icons.add_circle_outline, size: 22, color: AppColors.purpleAccent),
+                        icon: const Icon(Icons.add_circle_outline, size: 22, color: Color(0xFF2563EB)),
                         onPressed: () {
                           setState(() => _nursesPresent++);
                         },
@@ -1268,7 +1320,7 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               // Sync Button
               SizedBox(
@@ -1279,9 +1331,9 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   icon: const Icon(Icons.cloud_upload_outlined, size: 18),
                   label: Text(_isSyncingCapacity ? 'Syncing Status...' : 'Sync Attendance & Capacity to Cloud'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.purpleAccent,
+                    backgroundColor: const Color(0xFF1E293B),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                   ),
                 ),
               ),

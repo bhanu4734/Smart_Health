@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../app/app_theme.dart';
-import '../../core/widgets/app_card.dart';
 import '../../core/widgets/confidence_gauge.dart';
 import '../../shared/models/transfer_directive.dart';
 import '../../services/api_service.dart';
@@ -40,6 +39,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
           loadedPending.add(dir);
         }
       }
+      if (!mounted) return;
       setState(() {
         _directives = loadedPending;
         _approvedDirectives.clear();
@@ -47,6 +47,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
         _isLoading = false;
       });
     } else {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -78,7 +79,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
               Expanded(child: Text('Signed & Approved ${directive.directiveNumber} ($finalQty units dispatched)')),
             ],
           ),
-          backgroundColor: AppColors.primaryBlue,
+          backgroundColor: const Color(0xFF2563EB),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -90,10 +91,10 @@ class _TransfersScreenState extends State<TransfersScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: const Row(
           children: [
-            Icon(Icons.edit_note_rounded, color: AppColors.primaryBlue, size: 22),
+            Icon(Icons.edit_note_rounded, color: Color(0xFF2563EB), size: 22),
             SizedBox(width: 8),
             Text(
               'Adjust Transfer Quantity',
@@ -107,7 +108,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
           children: [
             Text(
               'Directive: ${directive.directiveNumber}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryBlue),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
             ),
             const SizedBox(height: 4),
             Text(
@@ -156,7 +157,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
             icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
             label: const Text('Confirm & Sign Directive'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
+              backgroundColor: const Color(0xFF2563EB),
               foregroundColor: Colors.white,
             ),
           ),
@@ -169,7 +170,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text(
           directive.directiveNumber,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -184,9 +185,9 @@ class _TransfersScreenState extends State<TransfersScreen> {
             const SizedBox(height: 12),
             Text('Route: ${directive.transitDetails}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
-            Text('Model Confidence: ${directive.confidencePercent}%', style: const TextStyle(fontSize: 12, color: AppColors.primaryBlue)),
+            Text('Model Confidence: ${directive.confidencePercent}%', style: const TextStyle(fontSize: 12, color: Color(0xFF2563EB))),
             const SizedBox(height: 12),
-            Text('Allocated Quantity: ${directive.quantity} Units', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.purpleAccent)),
+            Text('Allocated Quantity: ${directive.quantity} Units', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           ],
         ),
         actions: [
@@ -201,111 +202,140 @@ class _TransfersScreenState extends State<TransfersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 600;
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 28.0 : 16.0,
-        vertical: isDesktop ? 20.0 : 12.0,
+        horizontal: isDesktop ? 32.0 : 16.0,
+        vertical: isDesktop ? 24.0 : 14.0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Pill: REGIONAL COLD-CHAIN DISPATCH
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlueLight,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              border: Border.all(color: AppColors.primaryBlueBorder),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.circle, size: 6, color: AppColors.primaryBlue),
-                SizedBox(width: 6),
-                Text(
-                  'REGIONAL COLD-CHAIN DISPATCH',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: AppColors.primaryBlue,
+          // ── Top Header Row ────────────────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.circle, size: 5, color: Color(0xFF2563EB)),
+                            SizedBox(width: 5),
+                            Text(
+                              'REGIONAL COLD-CHAIN DISPATCH',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Title: Stock Redistribution
-          const Text(
-            'Stock Redistribution',
-            style: AppTextStyles.pageHeading,
-          ),
-          const SizedBox(height: 2),
-
-          // Subtitle: Directives Awaiting DMO Signature
-          Text(
-            '${_directives.length} Directives Awaiting DMO Signature',
-            style: AppTextStyles.subtext,
-          ),
-          const SizedBox(height: 12),
-
-          // Validated Logic / Rule 14-B Triaged Chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.verified_user_outlined, size: 16, color: AppColors.primaryBlue),
-                SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Validated Logic',
-                      style: TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Stock Redistribution',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.5,
                     ),
-                    Text(
-                      'Rule 14-B Triaged',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_directives.length} Directives Awaiting DMO Signature',
+                    style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+              // Validated Logic Chip
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.borderSubtle),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.verified_user_outlined, size: 18, color: Color(0xFF2563EB)),
+                    SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Validated Logic',
+                          style: TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
+                        ),
+                        Text(
+                          'Rule 14-B Triaged',
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          // Sub-tabs: Pending (2) •  /  Approved History (1)
+          // ── Horizontal Filter Sub-tabs (Clean pill tabs) ───────────────────
           Row(
             children: [
               _buildTab(0, 'Pending (${_directives.length})', hasRedDot: _directives.isNotEmpty),
-              const SizedBox(width: 24),
+              const SizedBox(width: 10),
               _buildTab(1, 'Approved History (${_approvedDirectives.length + 1})', hasRedDot: false),
             ],
           ),
-          const Divider(height: 1, color: AppColors.borderSubtle),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
 
-          // Tab contents
+          // ── Tab Contents ─────────────────────────────────────────────────
           if (_isLoading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
           else if (_activeTab == 0) ...[
             if (_directives.isEmpty)
               Container(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(40),
                 alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: AppColors.borderSubtle),
+                ),
                 child: Column(
                   children: const [
-                    Icon(Icons.task_alt_rounded, size: 36, color: AppColors.greenDot),
-                    SizedBox(height: 8),
-                    Text('All transfer directives approved and dispatched!'),
+                    Icon(Icons.task_alt_rounded, size: 40, color: AppColors.greenDot),
+                    SizedBox(height: 10),
+                    Text(
+                      'All transfer directives approved and dispatched!',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
                   ],
                 ),
               )
@@ -330,61 +360,79 @@ class _TransfersScreenState extends State<TransfersScreen> {
                 )),
           ],
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
 
-          // DMO SOP Guidelines info card at bottom
+          // ── Bottom SOP Guidelines Card ───────────────────────────────────
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.primaryBlueLight.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              border: Border.all(color: AppColors.primaryBlueBorder.withValues(alpha: 0.6)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.borderSubtle),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
             child: Row(
               children: const [
-                Icon(Icons.edit_note_rounded, size: 22, color: AppColors.primaryBlue),
-                SizedBox(width: 10),
+                Icon(Icons.edit_note_rounded, size: 22, color: Color(0xFF2563EB)),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Digital signatures execute immediate dispatch notifications to regional logistics fleet and lock inventory in source ledgers.',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.5,
                       color: AppColors.textPrimary,
                       height: 1.3,
                     ),
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 10),
                 Text(
                   'DMO SOP Guidelines',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primaryBlue,
+                    color: Color(0xFF2563EB),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
+  // ── SUB-TAB PILL BUTTON ──────────────────────────────────────────────────
   Widget _buildTab(int index, String label, {required bool hasRedDot}) {
     final isSelected = _activeTab == index;
     return InkWell(
       onTap: () => setState(() => _activeTab = index),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isSelected ? AppColors.primaryBlue : Colors.transparent,
-              width: 2.0,
-            ),
+          color: isSelected ? Colors.white : AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: isSelected ? AppColors.borderCard : AppColors.borderSubtle,
+            width: 1.0,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -392,13 +440,14 @@ class _TransfersScreenState extends State<TransfersScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.primaryBlue : AppColors.textSecondary,
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                letterSpacing: -0.1,
               ),
             ),
             if (hasRedDot) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Container(
                 width: 6,
                 height: 6,
@@ -414,18 +463,31 @@ class _TransfersScreenState extends State<TransfersScreen> {
     );
   }
 
+  // ── DIRECTIVE CARD ───────────────────────────────────────────────────────
   Widget _buildDirectiveCard(TransferDirective directive) {
     Color badgeBg = directive.isCriticalStatus ? AppColors.redBg : AppColors.amberBg;
     Color badgeBorder = directive.isCriticalStatus ? AppColors.redBorder : AppColors.amberBorder;
     Color badgeText = directive.isCriticalStatus ? AppColors.redText : AppColors.amberText;
     Color dotColor = directive.isCriticalStatus ? AppColors.redDot : AppColors.amberDot;
 
-    return AppCard(
-      padding: const EdgeInsets.all(14),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header line: badge + directive #
+          // Header: Status badge & Directive ID
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -444,7 +506,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                     Text(
                       directive.statusBadge,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         color: badgeText,
                       ),
@@ -455,16 +517,16 @@ class _TransfersScreenState extends State<TransfersScreen> {
               Text(
                 directive.directiveNumber,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // Expiry Risk / Season info
+          // Expiry / Season info
           Row(
             children: [
               Icon(
@@ -476,23 +538,23 @@ class _TransfersScreenState extends State<TransfersScreen> {
               Text(
                 directive.riskInfo,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // Title
           Text(
             directive.title,
             style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
-              letterSpacing: -0.2,
+              letterSpacing: -0.3,
             ),
           ),
           const SizedBox(height: 4),
@@ -501,60 +563,60 @@ class _TransfersScreenState extends State<TransfersScreen> {
           Text(
             directive.description,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: AppColors.textSecondary,
               height: 1.3,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // Route Flow Container (Light Blue)
+          // Route Container
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.primaryBlueLight.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primaryBlueBorder.withValues(alpha: 0.6)),
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.borderSubtle),
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Origin Source
+                    // Origin
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
                             'ORIGIN SOURCE',
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                           ),
                           const SizedBox(height: 3),
                           Text(
                             directive.originName,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             directive.originSubtitle,
-                            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
                     ),
 
-                    // Arrow
+                    // Direction Arrow
                     Container(
-                      width: 26,
-                      height: 26,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primaryBlueBorder),
+                        border: Border.all(color: AppColors.borderSubtle),
                       ),
                       child: const Center(
-                        child: Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.primaryBlue),
+                        child: Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF2563EB)),
                       ),
                     ),
 
@@ -566,7 +628,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                           Text(
                             directive.isTargetCritical ? 'TARGET CRITICAL' : 'TARGET DESTINATION',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 9.5,
                               fontWeight: FontWeight.w700,
                               color: directive.isTargetCritical ? AppColors.redText : AppColors.textSecondary,
                             ),
@@ -574,14 +636,14 @@ class _TransfersScreenState extends State<TransfersScreen> {
                           const SizedBox(height: 3),
                           Text(
                             directive.targetName,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             directive.targetSubtitle,
                             textAlign: TextAlign.right,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: directive.isTargetCritical ? FontWeight.w600 : FontWeight.normal,
                               color: directive.isTargetCritical ? AppColors.redText : AppColors.textSecondary,
                             ),
@@ -592,13 +654,13 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Divider(height: 1, color: AppColors.primaryBlueBorder),
+                const Divider(height: 1, color: AppColors.borderSubtle),
                 const SizedBox(height: 8),
 
-                // Transit Corridor
+                // Transit corridor info
                 Row(
                   children: [
-                    const Icon(Icons.local_shipping_outlined, size: 16, color: AppColors.primaryBlue),
+                    const Icon(Icons.local_shipping_outlined, size: 16, color: Color(0xFF2563EB)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text.rich(
@@ -606,11 +668,11 @@ class _TransfersScreenState extends State<TransfersScreen> {
                           children: [
                             TextSpan(
                               text: '${directive.transitTypeLabel}  ',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                             ),
                             TextSpan(
                               text: directive.transitDetails,
-                              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                             ),
                           ],
                         ),
@@ -623,12 +685,12 @@ class _TransfersScreenState extends State<TransfersScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Confidence & AI Reason
+          // Confidence & Reason
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ConfidenceGauge(percentage: directive.confidencePercent),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -637,28 +699,28 @@ class _TransfersScreenState extends State<TransfersScreen> {
                       children: [
                         Text(
                           directive.confidenceTitle,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           '• ${directive.confidenceBadge}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.primaryBlue, fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       directive.confidenceNote,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // Actions (Role Restricted: Only District Admin can Approve)
+          // Action buttons
           Builder(
             builder: (context) {
               final userRole = AuthController().userRole.toLowerCase();
@@ -669,31 +731,31 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 36,
+                        height: 38,
                         child: OutlinedButton.icon(
                           onPressed: () => _showEditQuantityAndApproveDialog(directive),
-                          icon: const Icon(Icons.edit_note_rounded, size: 15, color: AppColors.primaryBlue),
-                          label: const Text('Edit Unit Count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryBlue)),
+                          icon: const Icon(Icons.edit_note_rounded, size: 16, color: Color(0xFF2563EB)),
+                          label: const Text('Edit Unit Count', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.primaryBlueBorder),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            side: const BorderSide(color: AppColors.borderSubtle),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: SizedBox(
-                        height: 36,
+                        height: 38,
                         child: ElevatedButton.icon(
                           onPressed: () => _showEditQuantityAndApproveDialog(directive),
-                          icon: const Icon(Icons.call_split_rounded, size: 15),
-                          label: const Text('Approve Transfer Directive', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          icon: const Icon(Icons.call_split_rounded, size: 16),
+                          label: const Text('Approve Transfer Directive', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
+                            backgroundColor: const Color(0xFF1E293B),
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                           ),
                         ),
                       ),
@@ -701,27 +763,26 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   ],
                 );
               } else {
-                // PHC Manager View: Track status & Call Hotline if delayed
                 return Row(
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 36,
+                        height: 38,
                         child: OutlinedButton.icon(
                           onPressed: () => _showDetailsDialog(directive),
-                          icon: const Icon(Icons.info_outline_rounded, size: 15, color: AppColors.textPrimary),
-                          label: const Text('View Status', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                          icon: const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.textPrimary),
+                          label: const Text('View Status', style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary)),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppColors.borderSubtle),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: SizedBox(
-                        height: 36,
+                        height: 38,
                         child: ElevatedButton.icon(
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -733,18 +794,18 @@ class _TransfersScreenState extends State<TransfersScreen> {
                                     Text('Calling District Officer Hotline (+91 98480 22334)...'),
                                   ],
                                 ),
-                                backgroundColor: AppColors.purpleAccent,
+                                backgroundColor: Color(0xFF2563EB),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
                           },
-                          icon: const Icon(Icons.phone_in_talk_rounded, size: 15),
-                          label: const Text('📞 Call District Hotline', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
+                          label: const Text('📞 Call District Hotline', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.purpleAccent,
+                            backgroundColor: const Color(0xFF1E293B),
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                           ),
                         ),
                       ),
@@ -760,9 +821,21 @@ class _TransfersScreenState extends State<TransfersScreen> {
   }
 
   Widget _buildApprovedHistoryItem(String id, String title, String route, String status) {
-    return AppCard(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -770,24 +843,24 @@ class _TransfersScreenState extends State<TransfersScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(id, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primaryBlue)),
+                Text(id, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
+                const SizedBox(height: 3),
+                Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 const SizedBox(height: 2),
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text(route, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text(route, style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.greenBg,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               border: Border.all(color: AppColors.greenBorder),
             ),
             child: Text(
               status,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.greenText),
+              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.greenText),
             ),
           ),
         ],

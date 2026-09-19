@@ -38,11 +38,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _loadPhcs() async {
     final list = await ApiService.fetchPHCs();
-    if (mounted && list.isNotEmpty) {
-      setState(() {
-        _phcList = list;
-      });
-    }
+    if (!mounted) return;
+    setState(() => _phcList = list);
   }
 
   @override

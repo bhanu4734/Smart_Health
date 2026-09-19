@@ -52,7 +52,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
       return const [
         DispenseScreen(),
         TransfersScreen(),
-        AnalyticsScreen(),
       ];
     }
   }
@@ -87,11 +86,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
           'icon': Icons.swap_horiz_rounded,
           'label': 'Requisitions',
           'badge': 'District Sync',
-        },
-        {
-          'icon': Icons.auto_graph_rounded,
-          'label': 'Analytics',
-          'badge': 'Overview',
         },
       ];
     }
@@ -307,6 +301,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 DesktopSidebar(
                   selectedIndex: activeIndex,
                   items: _navItems,
+                  userRole: _activeRole,
                   onDestinationSelected: (index) {
                     setState(() => _currentIndex = index);
                   },
@@ -322,7 +317,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         physics: const ClampingScrollPhysics(),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1100),
+                            constraints: const BoxConstraints(maxWidth: 1400),
                             child: screens[activeIndex],
                           ),
                         ),

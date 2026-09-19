@@ -24,9 +24,9 @@ class AppHeader extends StatelessWidget {
         title: Row(
           children: [
             CircleAvatar(
-              backgroundColor: AppColors.purpleLight,
+              backgroundColor: AppColors.primaryBlueLight,
               radius: 18,
-              child: const Text('RW', style: TextStyle(color: AppColors.purpleAccent, fontWeight: FontWeight.w700)),
+              child: const Text('RW', style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.w700)),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -70,7 +70,7 @@ class AppHeader extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.purpleAccent,
+              backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,
             ),
             child: const Text('Sign Out'),
@@ -86,8 +86,8 @@ class AppHeader extends StatelessWidget {
     final auth = AuthController();
 
     return Container(
-      height: isMobile ? 48 : 56,
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24),
+      height: isMobile ? 48 : 54,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -97,30 +97,30 @@ class AppHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left: App icon & enterprise title
+          // Left: App icon & subtle enterprise title
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: AppColors.purpleLight,
+                  color: AppColors.primaryBlueLight,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
-                  Icons.devices_outlined,
-                  size: 18,
-                  color: AppColors.purpleAccent,
+                  Icons.health_and_safety_outlined,
+                  size: 17,
+                  color: AppColors.primaryBlue,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 AppConstants.appName,
                 style: TextStyle(
-                  fontSize: isMobile ? 15 : 17,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.purpleAccent,
-                  letterSpacing: -0.3,
+                  fontSize: isMobile ? 14.5 : 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.2,
                 ),
               ),
               if (!isMobile) ...[
@@ -129,18 +129,18 @@ class AppHeader extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppColors.greenBg,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                     border: Border.all(color: AppColors.greenBorder, width: 0.8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.circle, size: 6, color: AppColors.greenDot),
+                      Icon(Icons.circle, size: 5, color: AppColors.greenDot),
                       SizedBox(width: 5),
                       Text(
                         'Cloud Sync Online',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w600,
                           color: AppColors.greenText,
                         ),
@@ -160,7 +160,7 @@ class AppHeader extends StatelessWidget {
                 IconButton(
                   icon: const Icon(
                     Icons.notifications_none_rounded,
-                    size: 20,
+                    size: 19,
                     color: AppColors.textSecondary,
                   ),
                   onPressed: onNotificationsTap ??
@@ -173,8 +173,8 @@ class AppHeader extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(
-                    Icons.settings_outlined,
-                    size: 20,
+                    Icons.tune_rounded,
+                    size: 19,
                     color: AppColors.textSecondary,
                   ),
                   onPressed: onSettingsTap ??
@@ -185,9 +185,9 @@ class AppHeader extends StatelessWidget {
                       },
                   tooltip: 'Node Settings',
                 ),
-                const SizedBox(width: 8),
-                const VerticalDivider(width: 1, indent: 14, endIndent: 14),
-                const SizedBox(width: 12),
+                const SizedBox(width: 6),
+                const VerticalDivider(width: 1, indent: 14, endIndent: 14, color: AppColors.borderSubtle),
+                const SizedBox(width: 10),
               ],
               InkWell(
                 onTap: () => _showProfileModal(context),
@@ -196,14 +196,14 @@ class AppHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircleAvatar(
-                      radius: isMobile ? 14 : 16,
-                      backgroundColor: AppColors.purpleLight,
-                      child: Text(
+                      radius: isMobile ? 14 : 15,
+                      backgroundColor: AppColors.primaryBlueLight,
+                      child: const Text(
                         'RW',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.purpleAccent,
+                          color: AppColors.primaryBlue,
                         ),
                       ),
                     ),
@@ -217,7 +217,7 @@ class AppHeader extends StatelessWidget {
                             auth.userName,
                             style: const TextStyle(
                               fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.textPrimary,
                             ),
                           ),
