@@ -191,6 +191,8 @@ class _CommandScreenState extends State<CommandScreen> {
               ],
             ),
           ),
+          if (_isLoading)
+            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
           const SizedBox(height: 16),
 
           // Metric Card 1: Critical Shortages (with red left border)

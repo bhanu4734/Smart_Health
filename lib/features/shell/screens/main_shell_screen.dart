@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../auth/screens/login_screen.dart';
 import '../widgets/mobile_bottom_nav.dart';
 import '../widgets/desktop_sidebar.dart';
 import '../widgets/app_header.dart';
@@ -50,6 +51,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     } else {
       return const [
         DispenseScreen(),
+        TransfersScreen(),
+        AnalyticsScreen(),
       ];
     }
   }
@@ -80,34 +83,30 @@ class _MainShellScreenState extends State<MainShellScreen> {
           'label': 'Dispense',
           'badge': 'Active',
         },
+        {
+          'icon': Icons.swap_horiz_rounded,
+          'label': 'Requisitions',
+          'badge': 'District Sync',
+        },
+        {
+          'icon': Icons.auto_graph_rounded,
+          'label': 'Analytics',
+          'badge': 'Overview',
+        },
       ];
     }
   }
 
-  void _switchRole() {
-    setState(() {
-      if (_isAdmin) {
-        _activeRole = 'PHC Manager (PHC Level)';
-      } else {
-        _activeRole = 'District Health Officer / Admin (District Level)';
-      }
-      _currentIndex = 0;
-    });
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text('RBAC Role Switched to: ${_isAdmin ? "District Admin" : "PHC Manager"}'),
-          ],
-        ),
-        backgroundColor: AppColors.purpleAccent,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
+  void _handleLogout() {
+    AuthController().logout();
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 300),
       ),
+      (route) => false,
     );
   }
 
@@ -134,7 +133,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             constraints: const BoxConstraints(maxWidth: 480),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.background,
                 border: Border.symmetric(
                   vertical: BorderSide(color: AppColors.borderSubtle, width: 1),
                 ),
@@ -148,7 +147,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
               ),
               child: Column(
                 children: [
-                  // Top App Bar: [+] Project Resilience & Role Badge / Switch Icon
+                  // Top App Bar: [+] Project Resilience & Role Badge / Logout Icon
                   Container(
                     height: 54,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -218,12 +217,24 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             const SizedBox(width: 4),
                             IconButton(
                               icon: const Icon(
-                                Icons.swap_horiz_rounded,
-                                size: 20,
-                                color: AppColors.purpleAccent,
+                                Icons.sync_rounded,
+                                size: 18,
+                                color: AppColors.primaryBlue,
                               ),
-                              onPressed: _switchRole,
-                              tooltip: 'Switch RBAC Role (Admin vs PHC)',
+                              onPressed: _handleSync,
+                              tooltip: 'Sync Ledger & Telemetry',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.logout_rounded,
+                                size: 20,
+                                color: AppColors.redText,
+                              ),
+                              onPressed: _handleLogout,
+                              tooltip: 'Logout & End Session',
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
@@ -281,7 +292,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
               );
             },
             onSettingsTap: () {
-              _switchRole();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Node Settings: Warangal Sector 4 (Live Session)')),
+              );
             },
           ),
 

@@ -50,12 +50,21 @@ class MobileBottomNav extends StatelessWidget {
 
     return InkWell(
       onTap: () => onTap(index),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryBlueLight : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? AppColors.purpleLight : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.purpleAccent.withValues(alpha: 0.1),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -63,7 +72,7 @@ class MobileBottomNav extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color: isSelected ? AppColors.primaryBlue : AppColors.textSecondary,
+              color: isSelected ? AppColors.purpleAccent : AppColors.textSecondary,
             ),
             const SizedBox(height: 3),
             Text(
@@ -71,7 +80,7 @@ class MobileBottomNav extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.primaryBlue : AppColors.textSecondary,
+                color: isSelected ? AppColors.purpleAccent : AppColors.textSecondary,
                 letterSpacing: -0.2,
               ),
             ),
