@@ -38,11 +38,20 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   bool get _isAdmin {
     final lower = _activeRole.toLowerCase();
-    return lower.contains('admin') || lower.contains('district');
+    return lower.contains('admin') || lower.contains('district') || lower.contains('dmo');
+  }
+
+  bool get _isDriver {
+    final lower = _activeRole.toLowerCase();
+    return lower.contains('driver') || lower.contains('fleet') || lower.contains('transport');
   }
 
   List<Widget> get _screens {
-    if (_isAdmin) {
+    if (_isDriver) {
+      return const [
+        TransfersScreen(),
+      ];
+    } else if (_isAdmin) {
       return const [
         CommandScreen(),
         TransfersScreen(),
@@ -57,34 +66,42 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   List<Map<String, dynamic>> get _navItems {
-    if (_isAdmin) {
+    if (_isDriver) {
+      return const [
+        {
+          'icon': Icons.local_shipping_rounded,
+          'label': 'Fleet Dispatches & OTP',
+          'badge': 'Active Fleet',
+        },
+      ];
+    } else if (_isAdmin) {
       return const [
         {
           'icon': Icons.grid_view_rounded,
-          'label': 'Command',
-          'badge': '7 Alerts',
+          'label': 'District Command Hub',
+          'badge': 'Surge Center',
         },
         {
           'icon': Icons.swap_horiz_rounded,
-          'label': 'Transfers',
-          'badge': '2 Directives',
+          'label': 'Stock Logistics & OTP',
+          'badge': 'Directives',
         },
         {
           'icon': Icons.auto_graph_rounded,
-          'label': 'Analytics',
-          'badge': '1 Vector',
+          'label': 'Surge Analytics',
+          'badge': 'Outbreak ML',
         },
       ];
     } else {
       return const [
         {
           'icon': Icons.local_pharmacy_rounded,
-          'label': 'Dispense',
-          'badge': 'Active',
+          'label': 'Daily Dispensing',
+          'badge': 'PHC Register',
         },
         {
           'icon': Icons.swap_horiz_rounded,
-          'label': 'Requisitions',
+          'label': 'Directives & OTP Receipt',
           'badge': 'District Sync',
         },
       ];

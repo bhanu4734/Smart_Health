@@ -22,13 +22,12 @@ class _LoginScreenState extends State<LoginScreen> {
       TextEditingController(text: AppConstants.demoPassword);
   bool _rememberMe = true;
   bool _isLoading = false;
-  String _role = 'PHC Manager';
+  String _role = '🏢 District Medical Officer (DMO / District Admin)';
 
   final List<String> _roles = [
-    'PHC Manager',
-    'PHC Manager (PHC Level)',
-    'District Health Officer / Admin',
-    'District Health Officer / Admin (District Level)',
+    '🏢 District Medical Officer (DMO / District Admin)',
+    '🏥 PHC Medical Officer (Facility Stock Manager)',
+    '🚚 Cold-Chain Fleet Driver (Logistics & OTP Transport)',
   ];
 
   @override
@@ -53,9 +52,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (res['success'] == true) {
       final user = res['user'] ?? {};
-      final roleStr = user['role'] == 'district_admin'
-          ? 'District Health Officer / Admin (District Level)'
-          : 'PHC Manager (PHC Level)';
+      final userRoleStr = user['role'] ?? '';
+      final roleStr = userRoleStr == 'district_admin'
+          ? '🏢 District Medical Officer (DMO / District Admin)'
+          : userRoleStr.contains('driver')
+              ? '🚚 Cold-Chain Fleet Driver (Logistics & OTP Transport)'
+              : _role;
 
       if (user['phc_id'] != null) {
         AuthController().setPhcData(user['phc_id'], user['phc_name'] ?? user['phc_id']);

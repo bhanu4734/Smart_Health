@@ -19,6 +19,12 @@ class TransferDirective {
   final String? id;
   int quantity;
   bool isApproved;
+  String status;
+  String? driverId;
+  String? driverName;
+  String? driverPhone;
+  String? vehicleNumber;
+  String? handoverOtp;
 
   TransferDirective({
     this.id,
@@ -41,11 +47,17 @@ class TransferDirective {
     required this.confidenceNote,
     this.quantity = 500,
     this.isApproved = false,
+    this.status = 'proposed',
+    this.driverId,
+    this.driverName,
+    this.driverPhone,
+    this.vehicleNumber,
+    this.handoverOtp,
   });
 
   factory TransferDirective.fromJson(Map<String, dynamic> json) {
-    final status = json['status'] ?? 'pending';
-    final isApproved = status == 'approved';
+    final statusStr = json['status'] ?? 'proposed';
+    final isApproved = statusStr == 'approved' || statusStr == 'in_transit' || statusStr == 'completed';
     final distance = (json['distance_km'] as num?)?.toDouble() ?? 15.0;
     final eta = json['eta_mins'] ?? (distance * 1.8).round();
     final qty = (json['quantity'] as num?)?.toInt() ?? 500;
@@ -55,10 +67,19 @@ class TransferDirective {
     final conf = (json['ai_confidence_pct'] as num?)?.toInt() ?? 94;
     final idStr = json['id'] ?? 'TR-001';
 
+    String badge = 'Zero-Stock Imminent';
+    if (statusStr == 'completed') {
+      badge = '✅ Delivery Completed';
+    } else if (statusStr == 'in_transit') {
+      badge = '🚚 In-Transit (OTP Issued)';
+    } else if (isApproved) {
+      badge = '🛡️ Approved & Dispatched';
+    }
+
     return TransferDirective(
       id: idStr,
       directiveNumber: 'Directive #$idStr',
-      statusBadge: isApproved ? 'Approved & En Route' : 'Zero-Stock Imminent',
+      statusBadge: badge,
       isCriticalStatus: !isApproved,
       riskInfo: 'SciPy OR Optimization Directive',
       title: '$medName • $qty Units',
@@ -76,6 +97,12 @@ class TransferDirective {
       confidenceNote: json['reason'] ?? 'Redistribution balances stockout risk across district facilities.',
       quantity: qty,
       isApproved: isApproved,
+      status: statusStr,
+      driverId: json['driver_id'],
+      driverName: json['driver_name'],
+      driverPhone: json['driver_phone'],
+      vehicleNumber: json['vehicle_number'],
+      handoverOtp: json['handover_otp'],
     );
   }
 

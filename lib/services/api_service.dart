@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Configurable API base URL (Use PC Wi-Fi IP 192.168.0.241 for physical mobile debugging, 127.0.0.1 for desktop)
-  static String baseUrl = 'https://544a-103-172-4-228.ngrok-free.app/api';
+  // Configurable API base URL (Use PC Wi-Fi IP 10.107.4.185:8000 for physical mobile/web debugging, 127.0.0.1:8000 for desktop/localhost)
+  static String baseUrl = 'http://10.107.4.185:8000/api';
 
   // 1. Fetch All PHCs
   static Future<List<dynamic>> fetchPHCs({String? districtId, String? search}) async {
@@ -151,11 +151,16 @@ class ApiService {
   }
 
   // 7. Fetch Stock Transfer Directives
-  static Future<List<dynamic>> fetchTransferDirectives({String? status}) async {
+  static Future<List<dynamic>> fetchTransferDirectives({String? status, String? phcId, String? driverId}) async {
     try {
+      final queryParams = <String, String>{};
+      if (status != null && status.isNotEmpty) queryParams['status'] = status;
+      if (phcId != null && phcId.isNotEmpty) queryParams['phc_id'] = phcId;
+      if (driverId != null && driverId.isNotEmpty) queryParams['driver_id'] = driverId;
+
       Uri uri = Uri.parse('$baseUrl/redistribution/transfer-directives');
-      if (status != null && status.isNotEmpty) {
-        uri = uri.replace(queryParameters: {'status': status});
+      if (queryParams.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParams);
       }
 
       final response = await http.get(uri);
@@ -312,5 +317,115 @@ class ApiService {
       print('ApiService.fetchDistrictSummary error: $e');
     }
     return {};
+  }
+
+  // 14. Fetch Drivers & Transport Fleet
+  static Future<List<dynamic>> fetchDrivers({String? districtId}) async {
+    try {
+      Uri uri = Uri.parse('$baseUrl/drivers');
+      if (districtId != null && districtId.isNotEmpty) {
+        uri = uri.replace(queryParameters: {'district_id': districtId});
+      }
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['drivers'] ?? [];
+      }
+    } catch (e) {
+      print('ApiService.fetchDrivers error: $e');
+    }
+    return [];
+  }
+
+  // 15. Assign Transport Driver to Directive
+  static Future<Map<String, dynamic>> assignDriver({
+    required String transferId,
+    required String driverId,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/transfers/assign-driver');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'transfer_id': transferId,
+          'driver_id': driverId,
+        }),
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      print('ApiService.assignDriver error: $e');
+    }
+    return {'success': false, 'message': 'Failed to assign driver'};
+  }
+
+  // 16. Driver Pickup Stock (Status -> in_transit, Generates Handover OTP)
+  static Future<Map<String, dynamic>> pickupTransfer({
+    required String transferId,
+    required String driverId,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/transfers/pickup');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'transfer_id': transferId,
+          'driver_id': driverId,
+        }),
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      print('ApiService.pickupTransfer error: $e');
+    }
+    return {'success': false, 'message': 'Failed to confirm pickup'};
+  }
+
+  // 17. Verify Delivery & OTP Handover (Status -> completed)
+  static Future<Map<String, dynamic>> verifyDelivery({
+    required String transferId,
+    String? otpCode,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/transfers/verify-delivery');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'transfer_id': transferId,
+          'otp_code': otpCode,
+        }),
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      print('ApiService.verifyDelivery error: $e');
+    }
+    return {'success': false, 'message': 'Delivery verification failed'};
+  }
+
+  // 18. Calculate Real-Time OSRM Driving Distance & Travel Time
+  static Future<Map<String, dynamic>> calculateRoute({
+    required double lat1,
+    required double lon1,
+    required double lat2,
+    required double lon2,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/distance/calculate-route');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'lat1': lat1,
+          'lon1': lon1,
+          'lat2': lat2,
+          'lon2': lon2,
+        }),
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      print('ApiService.calculateRoute error: $e');
+    }
+    return {'success': false};
   }
 }

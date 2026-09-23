@@ -21,13 +21,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
   final TextEditingController _phcIdController = TextEditingController(text: 'PHC-D01-03');
-  String _selectedRole = 'PHC Manager (PHC Level)';
+  String _selectedRole = '🏥 PHC Medical Officer (Facility Stock Manager)';
   bool _isLoading = false;
   List<dynamic> _phcList = [];
 
   final List<String> _roles = [
-    'PHC Manager (PHC Level)',
-    'District Health Officer / Admin (District Level)',
+    '🏢 District Medical Officer (DMO / District Admin)',
+    '🏥 PHC Medical Officer (Facility Stock Manager)',
+    '🚚 Cold-Chain Fleet Driver (Logistics & OTP Transport)',
   ];
 
   @override
