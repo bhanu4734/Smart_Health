@@ -77,25 +77,28 @@ class MedicineItem {
     }
 
     final daysBadge = json['days_cover_badge'] ?? '${json['days_remaining'] ?? 0}d cover';
-    final isEmergency = (json['category'] ?? '').toString().toUpperCase().contains('EMERGENCY') ||
-        (json['medicine_name'] ?? '').toString().toUpperCase().contains('RABIES') ||
-        statusType == StockStatusType.critical;
+    final isEmergencyCategory = (json['category'] ?? '').toString().toUpperCase().contains('EMERGENCY') ||
+        (json['medicine_name'] ?? '').toString().toUpperCase().contains('RABIES');
+
+    final availableUnits = (json['current_stock'] as num?)?.toInt() ?? 0;
+    final isCriticalStock = statusType == StockStatusType.critical || availableUnits < 20;
+    final hasRedBorder = isCriticalStock || (isEmergencyCategory && availableUnits < 50);
 
     return MedicineItem(
       id: json['medicine_id'] ?? '',
       category: (json['category'] ?? 'GENERAL').toString().toUpperCase(),
       name: json['medicine_name'] ?? json['brand_name'] ?? '',
       formDescription: '${json['generic_name'] ?? json['medicine_name']} • ${json['unit'] ?? 'units'}',
-      availableUnits: (json['current_stock'] as num?)?.toInt() ?? 0,
+      availableUnits: availableUnits,
       unitLabel: json['unit'] ?? 'units',
       statusBadgeText: '${statusType == StockStatusType.critical ? 'Critical' : (statusType == StockStatusType.warning ? 'Warning' : 'Safe')} ($daysBadge)',
       statusType: statusType,
-      footerText: isEmergency ? 'Requires Patient Case ID' : 'Ready for dispense',
-      hasRedBorder: isEmergency,
+      footerText: isEmergencyCategory ? 'Requires Patient Case ID' : 'Ready for dispense',
+      hasRedBorder: hasRedBorder,
       batchNumber: json['batch_number'] ?? 'BATCH-${json['medicine_id']}',
       expiryDate: json['expiry_date'] ?? '12/2027',
       storage: (json['category'] ?? '').toString().toLowerCase().contains('vaccine') || (json['category'] ?? '').toString().toLowerCase().contains('rabies') ? 'Cold chain 2-8°C required' : 'Store in cool dry place',
-      priority: statusType == StockStatusType.critical ? 'Triage' : 'Standard',
+      priority: isCriticalStock ? 'Triage' : 'Standard',
     );
   }
 

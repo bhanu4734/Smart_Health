@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Configurable API base URL (Use PC Wi-Fi IP 10.107.4.185:8000 for physical mobile/web debugging, 127.0.0.1:8000 for desktop/localhost)
-  static String baseUrl = 'http://10.107.4.185:8000/api';
+  // Configurable API base URL (Use PC Wi-Fi IP 192.168.0.241:8000 for physical mobile/web debugging, 127.0.0.1:8000 for desktop/localhost)
+  static String baseUrl = 'http://192.168.0.241:8000/api';
 
   // 1. Fetch All PHCs
   static Future<List<dynamic>> fetchPHCs({String? districtId, String? search}) async {
@@ -151,12 +151,13 @@ class ApiService {
   }
 
   // 7. Fetch Stock Transfer Directives
-  static Future<List<dynamic>> fetchTransferDirectives({String? status, String? phcId, String? driverId}) async {
+  static Future<List<dynamic>> fetchTransferDirectives({String? status, String? phcId, String? driverId, String? search}) async {
     try {
       final queryParams = <String, String>{};
       if (status != null && status.isNotEmpty) queryParams['status'] = status;
       if (phcId != null && phcId.isNotEmpty) queryParams['phc_id'] = phcId;
       if (driverId != null && driverId.isNotEmpty) queryParams['driver_id'] = driverId;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
       Uri uri = Uri.parse('$baseUrl/redistribution/transfer-directives');
       if (queryParams.isNotEmpty) {
@@ -227,7 +228,11 @@ class ApiService {
           'email': email,
           'password': password,
           'full_name': fullName,
-          'role': role.contains('Admin') || role.contains('District') ? 'district_admin' : 'phc_staff',
+          'role': (role.contains('Driver') || role.contains('Fleet') || role.contains('driver'))
+              ? 'driver'
+              : (role.contains('Admin') || role.contains('District') || role.contains('dmo')
+                  ? 'district_admin'
+                  : 'phc_staff'),
           'phc_identifier': phcIdentifier,
         }),
       );
@@ -247,16 +252,20 @@ class ApiService {
   static Future<Map<String, dynamic>> login({
     required String usernameOrEmail,
     required String password,
+    String? role,
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/auth/login');
+      final bodyData = <String, dynamic>{
+        'username_or_email': usernameOrEmail,
+        'password': password,
+      };
+      if (role != null && role.isNotEmpty) bodyData['role'] = role;
+
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'username_or_email': usernameOrEmail,
-          'password': password,
-        }),
+        body: json.encode(bodyData),
       );
       final body = json.decode(response.body);
       if (response.statusCode == 200) {

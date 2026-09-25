@@ -70,7 +70,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       return const [
         {
           'icon': Icons.local_shipping_rounded,
-          'label': 'Fleet Dispatches & OTP',
+          'label': 'My Assigned Deliveries',
           'badge': 'Active Fleet',
         },
       ];

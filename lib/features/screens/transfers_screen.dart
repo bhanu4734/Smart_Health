@@ -17,22 +17,34 @@ class _TransfersScreenState extends State<TransfersScreen> {
   late List<TransferDirective> _directives;
   final List<TransferDirective> _approvedDirectives = [];
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _directives = TransferDirective.getInitialMockData();
+    final userRole = AuthController().userRole.toLowerCase();
+    final isDriver = userRole.contains('driver') || userRole.contains('fleet') || userRole.contains('transport');
+    _directives = isDriver ? [] : TransferDirective.getInitialMockData();
     _loadDirectivesFromApi();
   }
 
-  Future<void> _loadDirectivesFromApi() async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDirectivesFromApi({String? query}) async {
     setState(() => _isLoading = true);
     final userRole = AuthController().userRole.toLowerCase();
     final isAdmin = userRole.contains('admin') || userRole.contains('district') || userRole.contains('dmo');
+    final isDriver = userRole.contains('driver') || userRole.contains('fleet') || userRole.contains('transport');
     final userPhcId = AuthController().phcId;
+    final searchQuery = query ?? _searchController.text.trim();
 
     final rawData = await ApiService.fetchTransferDirectives(
-      phcId: isAdmin ? null : (userPhcId.isNotEmpty ? userPhcId : null),
+      phcId: (isAdmin || isDriver) ? null : (userPhcId.isNotEmpty ? userPhcId : null),
+      search: searchQuery.isNotEmpty ? searchQuery : null,
     );
 
     if (rawData.isNotEmpty) {
@@ -40,7 +52,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
       final loadedApproved = <TransferDirective>[];
       for (final item in rawData) {
         final dir = TransferDirective.fromJson(item);
-        if (!isAdmin && userPhcId.isNotEmpty) {
+        if (!isAdmin && !isDriver && userPhcId.isNotEmpty) {
           final isRelevant = dir.originName.contains(userPhcId) ||
               dir.targetName.contains(userPhcId) ||
               item['source_phc_id'] == userPhcId ||
@@ -50,7 +62,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
 
         if (dir.isApproved) {
           loadedApproved.add(dir);
-        } else {
+        } else if (!isDriver) {
+          // Drivers only see assigned active deliveries, not unapproved DMO proposals
           loadedPending.add(dir);
         }
       }
@@ -59,11 +72,180 @@ class _TransfersScreenState extends State<TransfersScreen> {
         _directives = loadedPending;
         _approvedDirectives.clear();
         _approvedDirectives.addAll(loadedApproved);
+        if (isDriver && _approvedDirectives.isEmpty) {
+          _populateDriverMockAssignedDeliveries();
+        }
         _isLoading = false;
       });
     } else {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _directives = isDriver ? [] : TransferDirective.getInitialMockData();
+        _approvedDirectives.clear();
+        if (isDriver) {
+          _populateDriverMockAssignedDeliveries();
+        }
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _populateDriverMockAssignedDeliveries() {
+    final driverName = AuthController().userName.isNotEmpty ? AuthController().userName : 'Testing Driver';
+    _approvedDirectives.addAll([
+      TransferDirective(
+        id: 'TR-DRV-001',
+        directiveNumber: 'Directive #TR-DRV-001',
+        statusBadge: '📥 New Assignment (Pending Acceptance)',
+        isCriticalStatus: true,
+        riskInfo: 'Assigned by DMO: Urgent Dispatch',
+        title: 'Anti-Rabies Serum (1000 IU) • 45 Vials',
+        description: 'Assigned cold-chain delivery corridor.',
+        originName: 'CHC Narsampet',
+        originSubtitle: 'Surplus Reserve',
+        targetName: 'PHC Gudur',
+        targetSubtitle: 'Critical Stock Deficit',
+        isTargetCritical: true,
+        transitDetails: '18.4 km • ETA: 25 mins • Cold Van #TS-09-EV-4421',
+        transitTypeLabel: 'Assigned Corridor',
+        confidencePercent: 96,
+        confidenceTitle: 'DMO Assignment',
+        confidenceBadge: 'Assigned to Fleet',
+        confidenceNote: 'Driver route optimized via OSRM.',
+        quantity: 45,
+        isApproved: true,
+        status: 'approved',
+        driverName: driverName,
+        vehicleNumber: 'TS-09-EV-4421',
+      ),
+      TransferDirective(
+        id: 'TR-DRV-002',
+        directiveNumber: 'Directive #TR-DRV-002',
+        statusBadge: '🚚 In-Transit (OTP Handover Active)',
+        isCriticalStatus: false,
+        riskInfo: 'Cold Storage: +4.2°C Nominal',
+        title: 'ORS Sachets • 600 Packs',
+        description: 'In-transit stock delivery.',
+        originName: 'Central Depot',
+        originSubtitle: 'Hub Stock',
+        targetName: 'PHC Rampur',
+        targetSubtitle: 'Buffer Replenishment',
+        isTargetCritical: false,
+        transitDetails: '42.0 km • ETA: 40 mins • Cold Van #TS-09-EV-4421',
+        transitTypeLabel: 'Assigned Corridor',
+        confidencePercent: 92,
+        confidenceTitle: 'In-Transit Shipment',
+        confidenceBadge: 'Accepted & En-Route',
+        confidenceNote: 'En-route delivery with active cold storage monitoring.',
+        quantity: 600,
+        isApproved: true,
+        status: 'in_transit',
+        driverName: driverName,
+        vehicleNumber: 'TS-09-EV-4421',
+        handoverOtp: '8492',
+      ),
+    ]);
+  }
+
+  void _simulateNewDmoAssignment() {
+    final driverName = AuthController().userName.isNotEmpty ? AuthController().userName : 'Testing Driver';
+    final newId = 'TR-DRV-00${_approvedDirectives.length + 1}';
+    final newDirective = TransferDirective(
+      id: newId,
+      directiveNumber: 'Directive #$newId',
+      statusBadge: '📥 New Assignment (Pending Acceptance)',
+      isCriticalStatus: true,
+      riskInfo: 'Assigned by DMO: Urgent Dispatch',
+      title: 'Paracetamol 650mg • 1,200 Tablets',
+      description: 'Preemptive stock redistribution assigned by DMO.',
+      originName: 'CHC Warangal Central',
+      originSubtitle: 'Surplus Reserve',
+      targetName: 'PHC Geesugonda',
+      targetSubtitle: 'Seasonal Outbreak Deficit',
+      isTargetCritical: true,
+      transitDetails: '14.2 km • ETA: 20 mins • Cold Van #TS-09-EV-4421',
+      transitTypeLabel: 'Assigned Corridor',
+      confidencePercent: 95,
+      confidenceTitle: 'DMO Assignment',
+      confidenceBadge: 'Assigned to Fleet',
+      confidenceNote: 'Driver route assigned by District Medical Officer.',
+      quantity: 1200,
+      isApproved: true,
+      status: 'approved',
+      driverName: driverName,
+      vehicleNumber: 'TS-09-EV-4421',
+    );
+    setState(() {
+      _approvedDirectives.insert(0, newDirective);
+      _activeTab = 0;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📥 New Delivery Assignment from DMO received! Review under New Assignments tab.'),
+        backgroundColor: Color(0xFF2563EB),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _acceptDeliveryAssignment(TransferDirective directive) async {
+    if (directive.id != null && directive.driverId != null) {
+      await ApiService.pickupTransfer(transferId: directive.id!, driverId: directive.driverId!);
+    }
+    final otp = directive.handoverOtp ?? '8492';
+    setState(() {
+      directive.status = 'in_transit';
+      directive.handoverOtp = otp;
+      _activeTab = 1;
+    });
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
+              SizedBox(width: 8),
+              Text('Delivery Accepted & Route Started!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('You accepted ${directive.directiveNumber} from ${directive.originName.replaceAll("\n", " ")} to ${directive.targetName.replaceAll("\n", " ")}.'),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Column(
+                  children: [
+                    const Text('SECURE RECIPIENT HANDOVER OTP:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.orange)),
+                    const SizedBox(height: 4),
+                    Text(otp, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 4, color: Colors.black87)),
+                    const SizedBox(height: 2),
+                    const Text('Provide this OTP to destination PHC staff upon arrival.', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+              child: const Text('OK, Start Navigation'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -518,6 +700,13 @@ class _TransfersScreenState extends State<TransfersScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final userRole = AuthController().userRole.toLowerCase();
+    final isDriver = userRole.contains('driver') || userRole.contains('fleet') || userRole.contains('transport');
+
+    final assignedPending = _approvedDirectives.where((d) => d.status == 'approved').toList();
+    final inTransit = _approvedDirectives.where((d) => d.status == 'in_transit').toList();
+    final completedShipments = _approvedDirectives.where((d) => d.status == 'completed').toList();
+    final activeShipments = _approvedDirectives.where((d) => d.status != 'completed').toList();
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -532,54 +721,59 @@ class _TransfersScreenState extends State<TransfersScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.circle, size: 5, color: Color(0xFF2563EB)),
-                            SizedBox(width: 5),
-                            Text(
-                              'REGIONAL COLD-CHAIN DISPATCH',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
-                                color: Color(0xFF2563EB),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.circle, size: 5, color: Color(0xFF2563EB)),
+                              const SizedBox(width: 5),
+                              Text(
+                                isDriver ? '🚚 FLEET LOGISTICS & COLD-CHAIN DISPATCH' : 'REGIONAL COLD-CHAIN DISPATCH',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                  color: Color(0xFF2563EB),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Stock Redistribution',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${_directives.length} Directives Awaiting DMO Signature',
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      isDriver ? 'My Assigned Fleet Deliveries' : 'Stock Redistribution',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isDriver
+                          ? '${assignedPending.length} New Assignment(s) • ${inTransit.length} In-Transit Shipment(s)'
+                          : '${_directives.length} Directives Awaiting DMO Signature',
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 10),
               // Validated Logic Chip
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -597,19 +791,19 @@ class _TransfersScreenState extends State<TransfersScreen> {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.verified_user_outlined, size: 18, color: Color(0xFF2563EB)),
-                    SizedBox(width: 8),
+                  children: [
+                    Icon(isDriver ? Icons.thermostat_rounded : Icons.verified_user_outlined, size: 18, color: const Color(0xFF2563EB)),
+                    const SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Validated Logic',
-                          style: TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
+                          isDriver ? 'Fleet Telemetry' : 'Validated Logic',
+                          style: const TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
                         ),
                         Text(
-                          'Rule 14-B Triaged',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                          isDriver ? 'GPS & Cold (+4.2°C)' : 'Rule 14-B Triaged',
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                         ),
                       ],
                     ),
@@ -618,19 +812,70 @@ class _TransfersScreenState extends State<TransfersScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          // ── Search Bar ─────────────────────────────────────
+          Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.borderSubtle),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) {
+                _loadDirectivesFromApi(query: val.trim());
+              },
+              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: isDriver
+                    ? 'Search assigned deliveries by PHC, medicine, or OTP code...'
+                    : 'Search logistics directives by PHC, medicine, ID or status...',
+                hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textSecondary),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textSecondary),
+                        onPressed: () {
+                          _searchController.clear();
+                          _loadDirectivesFromApi(query: '');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 11),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
 
           // ── Horizontal Filter Sub-tabs (Clean pill tabs) ───────────────────
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: [
-                _buildTab(0, '⏳ Pending Approvals (${_directives.length})', hasRedDot: _directives.isNotEmpty),
-                const SizedBox(width: 8),
-                _buildTab(1, '🚚 En-Route Logistics (${_approvedDirectives.where((d) => d.status != "completed").length})', hasRedDot: false),
-                const SizedBox(width: 8),
-                _buildTab(2, '✅ Delivered & Audited (${_approvedDirectives.where((d) => d.status == "completed").length + 1})', hasRedDot: false),
-              ],
+              children: isDriver
+                  ? [
+                      _buildTab(0, '📥 New Assignments (${assignedPending.length})', hasRedDot: assignedPending.isNotEmpty),
+                      const SizedBox(width: 8),
+                      _buildTab(1, '🚚 Active In-Transit (${inTransit.length})', hasRedDot: inTransit.isNotEmpty),
+                      const SizedBox(width: 8),
+                      _buildTab(2, '✅ Completed History (${completedShipments.length})', hasRedDot: false),
+                    ]
+                  : [
+                      _buildTab(0, '⏳ Pending Approvals (${_directives.length})', hasRedDot: _directives.isNotEmpty),
+                      const SizedBox(width: 8),
+                      _buildTab(1, '🚚 En-Route Logistics (${activeShipments.length})', hasRedDot: false),
+                      const SizedBox(width: 8),
+                      _buildTab(2, '✅ Delivered & Audited (${completedShipments.length + 1})', hasRedDot: false),
+                    ],
             ),
           ),
           const SizedBox(height: 18),
@@ -638,7 +883,100 @@ class _TransfersScreenState extends State<TransfersScreen> {
           // ── Tab Contents ─────────────────────────────────────────────────
           if (_isLoading)
             const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
-          else if (_activeTab == 0) ...[
+          else if (isDriver) ...[
+            if (_activeTab == 0) ...[
+              if (assignedPending.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.inbox_outlined, size: 40, color: Color(0xFF2563EB)),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'No new delivery assignments from DMO',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'When a District Officer assigns a stock transfer to your fleet ID, it will appear here for your acceptance.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _simulateNewDmoAssignment,
+                        icon: const Icon(Icons.add_task_rounded, size: 16),
+                        label: const Text('🧪 Dispatch Demo DMO Assignment', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ...assignedPending.map((dir) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildDirectiveCard(dir),
+                    )),
+            ] else if (_activeTab == 1) ...[
+              if (inTransit.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.local_shipping_outlined, size: 36, color: Color(0xFF2563EB)),
+                      SizedBox(height: 8),
+                      Text('No active shipments in-transit.', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      SizedBox(height: 4),
+                      Text('Accept a delivery assignment from the New Assignments tab to start your route.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                )
+              else
+                ...inTransit.map((dir) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildDirectiveCard(dir),
+                    )),
+            ] else ...[
+              if (completedShipments.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded, size: 36, color: Colors.green),
+                      SizedBox(height: 8),
+                      Text('No completed handovers recorded yet.', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                )
+              else
+                ...completedShipments.map((dir) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildDirectiveCard(dir),
+                    )),
+            ],
+          ] else if (_activeTab == 0) ...[
             if (_directives.isEmpty)
               Container(
                 padding: const EdgeInsets.all(40),
@@ -648,8 +986,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: AppColors.borderSubtle),
                 ),
-                child: Column(
-                  children: const [
+                child: const Column(
+                  children: [
                     Icon(Icons.task_alt_rounded, size: 40, color: AppColors.greenDot),
                     SizedBox(height: 10),
                     Text(
@@ -665,8 +1003,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                     child: _buildDirectiveCard(dir),
                   )),
           ] else if (_activeTab == 1) ...[
-            // En-Route & Active Logistics Tab
-            if (_approvedDirectives.where((d) => d.status != 'completed').isEmpty)
+            if (activeShipments.isEmpty)
               Container(
                 padding: const EdgeInsets.all(32),
                 alignment: Alignment.center,
@@ -686,19 +1023,18 @@ class _TransfersScreenState extends State<TransfersScreen> {
                 ),
               )
             else
-              ..._approvedDirectives.where((d) => d.status != 'completed').map((dir) => Padding(
+              ...activeShipments.map((dir) => Padding(
                     padding: const EdgeInsets.only(bottom: 14),
                     child: _buildDirectiveCard(dir),
                   )),
           ] else ...[
-            // Delivered & Audited Tab
             _buildApprovedHistoryItem(
               'Directive #DR-9018',
               'Amoxicillin 500mg • 2,000 Units',
               'Central Depot -> PHC Gudur',
               'OTP Verified • Dispatched at 14:20 IST',
             ),
-            ..._approvedDirectives.where((d) => d.status == 'completed').map((dir) => Padding(
+            ...completedShipments.map((dir) => Padding(
                   padding: const EdgeInsets.only(bottom: 14),
                   child: _buildDirectiveCard(dir),
                 )),
@@ -722,23 +1058,25 @@ class _TransfersScreenState extends State<TransfersScreen> {
               ],
             ),
             child: Row(
-              children: const [
-                Icon(Icons.edit_note_rounded, size: 22, color: Color(0xFF2563EB)),
-                SizedBox(width: 12),
+              children: [
+                Icon(isDriver ? Icons.thermostat_rounded : Icons.edit_note_rounded, size: 22, color: const Color(0xFF2563EB)),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Digital signatures execute immediate dispatch notifications to regional logistics fleet and lock inventory in source ledgers.',
-                    style: TextStyle(
+                    isDriver
+                        ? 'Real-time temperature monitoring active (+4.2°C). Present 4-digit handover OTP code to recipient PHC staff to complete delivery.'
+                        : 'Digital signatures execute immediate dispatch notifications to regional logistics fleet and lock inventory in source ledgers.',
+                    style: const TextStyle(
                       fontSize: 11.5,
                       color: AppColors.textPrimary,
                       height: 1.3,
                     ),
                   ),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
-                  'DMO SOP Guidelines',
-                  style: TextStyle(
+                  isDriver ? 'Fleet Delivery SOP' : 'DMO SOP Guidelines',
+                  style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF2563EB),
@@ -903,16 +1241,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
           ),
           const SizedBox(height: 4),
 
-          // Description
-          Text(
-            directive.description,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 14),
+          // Description (Omitted for clean mobile manager view)
+          const SizedBox(height: 8),
 
           // Route Container
           Container(
@@ -1031,31 +1361,24 @@ class _TransfersScreenState extends State<TransfersScreen> {
 
           // Confidence & Reason
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ConfidenceGauge(percentage: directive.confidencePercent),
               const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          directive.confidenceTitle,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '• ${directive.confidenceBadge}',
-                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
                     Text(
-                      directive.confidenceNote,
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                      directive.confidenceTitle,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '• ${directive.confidenceBadge}',
+                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -1069,6 +1392,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
             builder: (context) {
               final userRole = AuthController().userRole.toLowerCase();
               final isAdmin = userRole.contains('admin') || userRole.contains('district');
+              final isDriver = userRole.contains('driver') || userRole.contains('fleet') || userRole.contains('transport');
 
               if (directive.status == 'completed') {
                 return Container(
@@ -1129,6 +1453,28 @@ class _TransfersScreenState extends State<TransfersScreen> {
                   ],
                 );
               } else if (directive.isApproved) {
+                if (isDriver) {
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 40,
+                          child: ElevatedButton.icon(
+                            onPressed: () => _acceptDeliveryAssignment(directive),
+                            icon: const Icon(Icons.check_circle_rounded, size: 18),
+                            label: const Text('✅ ACCEPT DELIVERY & START ROUTE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
                 return Row(
                   children: [
                     Expanded(
@@ -1238,7 +1584,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
                             );
                           },
                           icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
-                          label: const Text('📞 Call District Hotline', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                          label: const Text('Call District Hotline', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1E293B),
                             foregroundColor: Colors.white,

@@ -13,32 +13,56 @@ class CommandScreen extends StatefulWidget {
 
 class _CommandScreenState extends State<CommandScreen> {
   late List<CommandNode> _nodes;
+  late List<CommandNode> _allRawNodes;
   bool _isCrisisSimulated = false;
   bool _isLoading = true;
+  int _nodeFilterIndex = 0; // 0: All, 1: At Risk / Stockouts, 2: Normal / Surplus Stock
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _allRawNodes = [];
     _nodes = CommandNode.getInitialMockData();
     _loadNodesFromApi();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   String _districtTitle = 'Srikakulam District Command';
 
-  Future<void> _loadNodesFromApi() async {
+  Future<void> _loadNodesFromApi({String? query}) async {
     setState(() => _isLoading = true);
-    final rawData = await ApiService.fetchPHCs();
+    final searchQuery = query ?? _searchController.text.trim();
+    final rawData = await ApiService.fetchPHCs(search: searchQuery.isNotEmpty ? searchQuery : null);
     if (!mounted) return;
     if (rawData.isNotEmpty) {
       final loaded = rawData.map((j) => CommandNode.fromJson(j)).toList();
       final distName = rawData.first['district_name'] ?? 'State';
+      
+      List<CommandNode> filtered = loaded;
+      if (_nodeFilterIndex == 1) {
+        filtered = loaded.where((n) => n.statusType == NodeStatusType.critical || n.statusType == NodeStatusType.warning).toList();
+      } else if (_nodeFilterIndex == 2) {
+        filtered = loaded.where((n) => n.statusType == NodeStatusType.surplus).toList();
+      }
+
       setState(() {
         _districtTitle = '$distName Health Sector Command';
-        _nodes = loaded.take(6).toList();
+        _allRawNodes = loaded;
+        _nodes = filtered;
         _isLoading = false;
       });
     } else {
-      setState(() => _isLoading = false);
+      setState(() {
+        _allRawNodes = [];
+        _nodes = [];
+        _isLoading = false;
+      });
     }
   }
 
@@ -164,30 +188,33 @@ class _CommandScreenState extends State<CommandScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'OPERATIONAL JURISDICTION',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      color: AppColors.textSecondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'OPERATIONAL JURISDICTION',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _districtTitle,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
+                    const SizedBox(height: 4),
+                    Text(
+                      _districtTitle,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               // Network status pill
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -258,9 +285,61 @@ class _CommandScreenState extends State<CommandScreen> {
             ],
             const SizedBox(height: 22),
 
-            // ── 3D Global PHC Network Mesh Showcase Banner ───────────────────
-            _buildGlobalPhcShowcaseBanner(context, isDesktop),
-            const SizedBox(height: 26),
+            // ── DMO PHC & Stock Search Bar ─────────────────────────────────
+            Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.borderSubtle),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  _loadNodesFromApi(query: val.trim());
+                },
+                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Search PHC nodes by name, mandal, or stock status...',
+                  hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textSecondary),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textSecondary),
+                          onPressed: () {
+                            _searchController.clear();
+                            _loadNodesFromApi(query: '');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── DMO Operational Filter Pills (Normal Stock vs At Risk) ────────
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildNodeFilterPill(0, '🏢 All PHC Nodes'),
+                  const SizedBox(width: 8),
+                  _buildNodeFilterPill(1, '🔴 At Risk Stock', badgeCount: _allRawNodes.where((n) => n.statusType != NodeStatusType.surplus).length),
+                  const SizedBox(width: 8),
+                  _buildNodeFilterPill(2, '🟢 Normal Stock', badgeCount: _allRawNodes.where((n) => n.statusType == NodeStatusType.surplus).length),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
 
             // ── Section: Primary Health Centers ─────────────────────────────
             Row(
@@ -337,22 +416,30 @@ class _CommandScreenState extends State<CommandScreen> {
 
   // ── SHORTAGES METRIC CARD ────────────────────────────────────────────────
   Widget _buildShortagesMetricCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.borderSubtle),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _nodeFilterIndex = 1;
+        });
+        _loadNodesFromApi();
+      },
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: _nodeFilterIndex == 1 ? AppColors.redBorder : AppColors.borderSubtle),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -419,8 +506,9 @@ class _CommandScreenState extends State<CommandScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── BEDS METRIC CARD ─────────────────────────────────────────────────────
   Widget _buildBedsMetricCard() {
@@ -987,26 +1075,53 @@ class _CommandScreenState extends State<CommandScreen> {
                     ],
                     const SizedBox(height: 10),
 
-                    // Emergency Reroute Button
-                    SizedBox(
-                      height: 34,
-                      child: ElevatedButton.icon(
-                        onPressed: _handleEmergencyReroute,
-                        icon: const Icon(Icons.local_shipping_outlined, size: 15),
-                        label: const Text(
-                          'Emergency Reroute',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E293B),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                    // Emergency Reroute & Assign Tablets Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 34,
+                            child: ElevatedButton.icon(
+                              onPressed: _handleEmergencyReroute,
+                              icon: const Icon(Icons.local_shipping_outlined, size: 15),
+                              label: const Text(
+                                'Emergency Reroute',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E293B),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SizedBox(
+                            height: 34,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showAssignTabletsModal(node),
+                              icon: const Icon(Icons.medication_rounded, size: 15, color: Color(0xFF2563EB)),
+                              label: const Text(
+                                '💊 Assign Tablets',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF2563EB)),
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1033,6 +1148,192 @@ class _CommandScreenState extends State<CommandScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildNodeFilterPill(int index, String label, {int? badgeCount}) {
+    final isSelected = _nodeFilterIndex == index;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _nodeFilterIndex = index;
+        });
+        _loadNodesFromApi();
+      },
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: isSelected ? AppColors.borderCard : AppColors.borderSubtle,
+            width: 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+              ),
+            ),
+            if (badgeCount != null && badgeCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF2563EB) : AppColors.borderSubtle,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAssignTabletsModal(CommandNode node) {
+    String selectedMedId = 'MED-AMOX-500';
+    String selectedMedName = 'Amoxicillin 500mg Tablets';
+    int selectedQty = 500;
+
+    final tabletOptions = [
+      {'id': 'MED-AMOX-500', 'name': 'Amoxicillin 500mg Tablets'},
+      {'id': 'MED-PARA-650', 'name': 'Paracetamol 650mg Tablets'},
+      {'id': 'MED-ORS-75', 'name': 'ORS Hydration Sachets (21g)'},
+      {'id': 'MED-INSU-100', 'name': 'Human Insulin 100IU Vials'},
+      {'id': 'MED-MAL-20', 'name': 'Artemether + Lumefantrine Tablets'},
+      {'id': 'MED-OXY-10', 'name': 'Oxytocin Injection 10IU Ampoules'},
+      {'id': 'MED-AZI-500', 'name': 'Azithromycin 500mg Tablets'},
+      {'id': 'MED-CIP-500', 'name': 'Ciprofloxacin 500mg Tablets'},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+              title: Row(
+                children: [
+                  const Icon(Icons.medication_rounded, color: Color(0xFF2563EB), size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Assign Tablets to ${node.name}',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select Tablet / Medicine Type:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: selectedMedId,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                    ),
+                    items: tabletOptions.map((opt) {
+                      return DropdownMenuItem<String>(
+                        value: opt['id'],
+                        child: Text(opt['name']!, style: const TextStyle(fontSize: 12.5)),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() {
+                          selectedMedId = val;
+                          selectedMedName = tabletOptions.firstWhere((o) => o['id'] == val)['name']!;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  const Text('Quantity (Units / Tablets):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [200, 500, 1000].map((q) {
+                      final isSel = selectedQty == q;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text('$q units'),
+                          selected: isSel,
+                          onSelected: (sel) {
+                            if (sel) setDialogState(() => selectedQty = q);
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(dialogCtx).pop();
+                    final res = await ApiService.requestEmergencyStock(
+                      phcId: node.id,
+                      medicineId: selectedMedId,
+                      requestedQuantity: selectedQty,
+                      reason: 'DMO Priority Allocation of $selectedMedName ($selectedQty units) to ${node.name}',
+                    );
+                    await _loadNodesFromApi();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(res['message'] ?? '💊 Successfully assigned $selectedQty units of $selectedMedName to ${node.name}!'),
+                          backgroundColor: const Color(0xFF2563EB),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Dispatch Tablets'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

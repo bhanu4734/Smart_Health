@@ -45,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final res = await ApiService.login(
       usernameOrEmail: _idController.text.trim(),
       password: _passController.text.trim(),
+      role: _role,
     );
 
     if (!mounted) return;
@@ -52,12 +53,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (res['success'] == true) {
       final user = res['user'] ?? {};
-      final userRoleStr = user['role'] ?? '';
-      final roleStr = userRoleStr == 'district_admin'
-          ? '🏢 District Medical Officer (DMO / District Admin)'
-          : userRoleStr.contains('driver')
-              ? '🚚 Cold-Chain Fleet Driver (Logistics & OTP Transport)'
-              : _role;
+      final dbRole = (user['role'] ?? '').toString().toLowerCase();
+
+      String actualRole;
+      if (dbRole.contains('admin') || dbRole.contains('district') || dbRole == 'dmo') {
+        actualRole = '🏢 District Medical Officer (DMO / District Admin)';
+      } else if (dbRole.contains('driver') || dbRole.contains('fleet')) {
+        actualRole = '🚚 Cold-Chain Fleet Driver (Logistics & OTP Transport)';
+      } else {
+        actualRole = '🏥 PHC Medical Officer (Facility Stock Manager)';
+      }
 
       if (user['phc_id'] != null) {
         AuthController().setPhcData(user['phc_id'], user['phc_name'] ?? user['phc_id']);
@@ -66,12 +71,12 @@ class _LoginScreenState extends State<LoginScreen> {
       await AuthController().login(
         emailOrStaffId: _idController.text.trim(),
         password: _passController.text.trim(),
-        role: roleStr,
+        role: actualRole,
       );
 
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => MainShellScreen(userRole: roleStr),
+          pageBuilder: (_, __, ___) => MainShellScreen(userRole: actualRole),
           transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
         ),
         (route) => false,
@@ -79,8 +84,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(res['message'] ?? 'Login failed. Check credentials.'),
-          backgroundColor: Colors.redAccent,
+          content: Text(res['message'] ?? 'Login failed. Check credentials or role.'),
+          backgroundColor: AppColors.redDark,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
