@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Configurable API base URL (Use PC Wi-Fi IP 192.168.0.241:8000 for physical mobile/web debugging, 127.0.0.1:8000 for desktop/localhost)
-  static String baseUrl = 'http://192.168.0.241:8000/api';
+  // Configurable API base URL for Production & Local Development
+  static String baseUrl = 'https://project-resilience-api.onrender.com/api';
 
   // 1. Fetch All PHCs
   static Future<List<dynamic>> fetchPHCs({String? districtId, String? search}) async {
