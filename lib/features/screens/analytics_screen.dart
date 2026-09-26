@@ -1284,7 +1284,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               runSpacing: 4,
                               children: [
                                 const Text(
-                                  'GLOBAL PHC GIS NETWORK',
+                                  'DISTRICT PHC MAP',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
@@ -1300,7 +1300,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                     border: Border.all(color: const Color(0xFFA7F3D0)),
                                   ),
                                   child: const Text(
-                                    'OPENSTREETMAP TELEMETRY',
+                                    'LIVE PHC MAP',
                                     style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
                                   ),
                                 ),
@@ -1323,7 +1323,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ElevatedButton.icon(
                   onPressed: () => PhcGlobeModal.show(context),
                   icon: const Icon(Icons.fullscreen_rounded, size: 16),
-                  label: const Text('Launch Fullscreen GIS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  label: const Text('Launch Fullscreen Map', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0284C7),
                     foregroundColor: Colors.white,

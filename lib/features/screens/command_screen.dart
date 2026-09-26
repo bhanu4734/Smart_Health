@@ -89,14 +89,14 @@ class _CommandScreenState extends State<CommandScreen> {
   void _triggerFederatedLearning() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('🌐 Initiating Sovereign Federated Learning across district silos...'),
+        content: Text('🤖 Running AI Demand Forecast across PHC nodes...'),
         duration: Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
     );
 
     final res = await ApiService.executeFederatedLearning(numDistricts: 5, numRounds: 3);
-    final msg = res['message'] ?? 'Federated Learning simulation completed!';
+    final msg = res['message'] ?? 'AI Demand Prediction completed!';
     if (mounted) {
       showDialog(
         context: context,
@@ -104,9 +104,9 @@ class _CommandScreenState extends State<CommandScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
           title: const Row(
             children: [
-              Icon(Icons.hub_rounded, color: AppColors.primaryBlue, size: 22),
+              Icon(Icons.psychology_rounded, color: AppColors.primaryBlue, size: 22),
               SizedBox(width: 8),
-              Text('Federated Learning Completed', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              Text('AI Demand Forecast Completed', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ],
           ),
           content: Text(msg, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
@@ -263,83 +263,81 @@ class _CommandScreenState extends State<CommandScreen> {
               const SizedBox(height: 12),
               _buildBedsMetricCard(),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            // ── Action Buttons Bar ──────────────────────────────────────────
-            if (isDesktop)
-              Row(
-                children: [
-                  Expanded(child: _buildSimulateOutbreakButton()),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildFederatedLearningButton()),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildGlobalPhc3DButton()),
-                ],
-              )
-            else ...[
-              _buildSimulateOutbreakButton(),
-              const SizedBox(height: 10),
-              _buildFederatedLearningButton(),
-              const SizedBox(height: 10),
-              _buildGlobalPhc3DButton(),
-            ],
-            const SizedBox(height: 22),
-
-            // ── DMO PHC & Stock Search Bar ─────────────────────────────────
+            // ── Unified Search & Control Hub ─────────────────────────────────
             Container(
-              height: 44,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(color: AppColors.borderSubtle),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 4,
+                    blurRadius: 6,
                     offset: const Offset(0, 1),
                   ),
                 ],
               ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) {
-                  _loadNodesFromApi(query: val.trim());
-                },
-                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                decoration: InputDecoration(
-                  hintText: 'Search PHC nodes by name, mandal, or stock status...',
-                  hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textSecondary),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textSecondary),
-                          onPressed: () {
-                            _searchController.clear();
-                            _loadNodesFromApi(query: '');
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── DMO Operational Filter Pills (Normal Stock vs At Risk) ────────
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildNodeFilterPill(0, '🏢 All PHC Nodes'),
-                  const SizedBox(width: 8),
-                  _buildNodeFilterPill(1, '🔴 At Risk Stock', badgeCount: _allRawNodes.where((n) => n.statusType != NodeStatusType.surplus).length),
-                  const SizedBox(width: 8),
-                  _buildNodeFilterPill(2, '🟢 Normal Stock', badgeCount: _allRawNodes.where((n) => n.statusType == NodeStatusType.surplus).length),
+                  // Search Bar Input
+                  Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        _loadNodesFromApi(query: val.trim());
+                      },
+                      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Search PHC nodes by name, mandal, or stock status...',
+                        hintStyle: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 16, color: AppColors.textSecondary),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _loadNodesFromApi(query: '');
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Filter Pills & Quick Tools Bar
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildNodeFilterPill(0, '🏢 All PHC Nodes'),
+                        const SizedBox(width: 6),
+                        _buildNodeFilterPill(1, '🔴 At Risk Stock', badgeCount: _allRawNodes.where((n) => n.statusType != NodeStatusType.surplus).length),
+                        const SizedBox(width: 6),
+                        _buildNodeFilterPill(2, '🟢 Normal Stock', badgeCount: _allRawNodes.where((n) => n.statusType == NodeStatusType.surplus).length),
+                        const SizedBox(width: 12),
+                        Container(width: 1, height: 18, color: AppColors.borderSubtle),
+                        const SizedBox(width: 12),
+                        _buildQuickToolsRow(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
 
             // ── Section: Primary Health Centers ─────────────────────────────
             Row(
@@ -596,200 +594,75 @@ class _CommandScreenState extends State<CommandScreen> {
     );
   }
 
-  // ── ACTION BUTTONS ───────────────────────────────────────────────────────
-  Widget _buildSimulateOutbreakButton() {
-    return SizedBox(
-      height: 42,
-      child: OutlinedButton.icon(
-        onPressed: _showSimulateCrisisDialog,
-        icon: const Icon(Icons.crisis_alert_rounded, size: 16, color: AppColors.redText),
-        label: const Text(
-          'Simulate Outbreak / Crisis',
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: AppColors.redDark,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: const BorderSide(color: AppColors.redBorder, width: 1.0),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFederatedLearningButton() {
-    return SizedBox(
-      height: 42,
-      child: ElevatedButton.icon(
-        onPressed: _triggerFederatedLearning,
-        icon: const Icon(Icons.hub_rounded, size: 16),
-        label: const Text(
-          'Execute Sovereign Federated Learning (FedAvg)',
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2563EB),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGlobalPhc3DButton() {
-    return SizedBox(
-      height: 42,
-      child: ElevatedButton.icon(
-        onPressed: () => PhcGlobeModal.show(context),
-        icon: const Icon(Icons.map_rounded, size: 16, color: Color(0xFF0284C7)),
-        label: const Text(
-          'OpenStreetMap Mesh (24.54, 77.65)',
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF0F172A),
-          side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGlobalPhcShowcaseBanner(BuildContext context, bool isDesktop) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 22.0 : 16.0,
-        vertical: isDesktop ? 18.0 : 14.0,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(
-          color: const Color(0xFFCBD5E1),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: isDesktop
-          ? Row(
-              children: [
-                _buildShowcaseIconOrb(),
-                const SizedBox(width: 18),
-                Expanded(child: _buildShowcaseTextInfo()),
-                const SizedBox(width: 20),
-                _buildShowcaseLaunchButton(context),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _buildShowcaseIconOrb(),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildShowcaseHeader()),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _buildShowcaseDescription(),
-                const SizedBox(height: 12),
-                _buildShowcaseMetaPills(),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: _buildShowcaseLaunchButton(context),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildShowcaseIconOrb() {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFFE0F2FE),
-        border: Border.all(
-          color: const Color(0xFFBAE6FD),
-          width: 1.5,
-        ),
-      ),
-      child: const Icon(
-        Icons.map_rounded,
-        color: Color(0xFF0284C7),
-        size: 24,
-      ),
-    );
-  }
-
-  Widget _buildShowcaseTextInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildShowcaseHeader(),
-        const SizedBox(height: 4),
-        _buildShowcaseDescription(),
-        const SizedBox(height: 8),
-        _buildShowcaseMetaPills(),
-      ],
-    );
-  }
-
-  Widget _buildShowcaseHeader() {
+  // ── QUICK TOOLS ROW ───────────────────────────────────────────────────────
+  Widget _buildQuickToolsRow() {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
-          'OPENSTREETMAP PHC NETWORK MESH',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.4,
+        // Outbreak Sim Pill
+        InkWell(
+          onTap: _showSimulateCrisisDialog,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.redBg,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: Border.all(color: AppColors.redBorder),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.crisis_alert_rounded, size: 13, color: AppColors.redDark),
+                SizedBox(width: 4),
+                Text('Outbreak Sim', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.redDark)),
+              ],
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color: const Color(0xFFECFDF5),
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: Border.all(color: const Color(0xFFA7F3D0)),
+        const SizedBox(width: 6),
+
+        // AI Predictor Pill
+        InkWell(
+          onTap: _triggerFederatedLearning,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.psychology_rounded, size: 13, color: Color(0xFF2563EB)),
+                SizedBox(width: 4),
+                Text('AI Predictor', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
+              ],
+            ),
           ),
-          child: const Text(
-            'LIVE GEODESIC GIS',
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF047857),
-              letterSpacing: 0.4,
+        ),
+        const SizedBox(width: 6),
+
+        // PHC Map Pill
+        InkWell(
+          onTap: () => PhcGlobeModal.show(context),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: Border.all(color: const Color(0xFFBBF7D0)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_rounded, size: 13, color: Color(0xFF16A34A)),
+                SizedBox(width: 4),
+                Text('PHC Map', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
+              ],
             ),
           ),
         ),
@@ -797,74 +670,7 @@ class _CommandScreenState extends State<CommandScreen> {
     );
   }
 
-  Widget _buildShowcaseDescription() {
-    return const Text(
-      'Real OpenStreetMap cartography centered at (24.54° N, 77.65° E) with live Telangana PHC edge nodes, supply buffers, and inter-district reallocation corridors.',
-      style: TextStyle(
-        color: Color(0xFF64748B),
-        fontSize: 12,
-        height: 1.35,
-      ),
-    );
-  }
 
-  Widget _buildShowcaseMetaPills() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: [
-        _buildShowcaseBadge(Icons.hub_rounded, '24 Monitored Nodes'),
-        _buildShowcaseBadge(Icons.alt_route_rounded, '7 Cold-Chain Corridors'),
-        _buildShowcaseBadge(Icons.touch_app_rounded, 'OpenStreetMap GIS & Telemetry HUD'),
-      ],
-    );
-  }
-
-  Widget _buildShowcaseBadge(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFCBD5E1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: const Color(0xFF0284C7)),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF334155),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShowcaseLaunchButton(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: () => PhcGlobeModal.show(context),
-      icon: const Icon(Icons.fullscreen_rounded, size: 16),
-      label: const Text(
-        'Open Interactive Map',
-        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0284C7),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-      ),
-    );
-  }
 
   // ── NODE CARD ────────────────────────────────────────────────────────────
   Widget _buildNodeCard(CommandNode node) {

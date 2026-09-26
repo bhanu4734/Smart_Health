@@ -870,11 +870,11 @@ class _TransfersScreenState extends State<TransfersScreen> {
                       _buildTab(2, '✅ Completed History (${completedShipments.length})', hasRedDot: false),
                     ]
                   : [
-                      _buildTab(0, '⏳ Pending Approvals (${_directives.length})', hasRedDot: _directives.isNotEmpty),
+                      _buildTab(0, ' Pending Approvals (${_directives.length})', hasRedDot: _directives.isNotEmpty),
                       const SizedBox(width: 8),
-                      _buildTab(1, '🚚 En-Route Logistics (${activeShipments.length})', hasRedDot: false),
+                      _buildTab(1, ' En-Route Logistics (${activeShipments.length})', hasRedDot: false),
                       const SizedBox(width: 8),
-                      _buildTab(2, '✅ Delivered & Audited (${completedShipments.length + 1})', hasRedDot: false),
+                      _buildTab(2, ' Delivered & Audited (${completedShipments.length + 1})', hasRedDot: false),
                     ],
             ),
           ),
