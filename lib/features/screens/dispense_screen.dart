@@ -1142,6 +1142,241 @@ class _DispenseScreenState extends State<DispenseScreen> {
     );
   }
 
+  void _showBedRerouteModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(24),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: ApiService.fetchBedRerouteRecommendations(phcId: _currentPhcId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    SizedBox(height: 30),
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Calculating OSRM Road Routes to Neighboring PHCs...',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    ),
+                    SizedBox(height: 30),
+                  ],
+                );
+              }
+
+              final res = snapshot.data;
+              if (res == null || res['success'] != true || res['recommendations'] == null) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppColors.redDark, size: 48),
+                    const SizedBox(height: 12),
+                    Text(
+                      res?['message'] ?? 'Failed to load bed reroute recommendations',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              }
+
+              final recs = (res['recommendations'] as List).cast<Map<String, dynamic>>();
+
+              if (recs.isEmpty) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.info_outline, color: AppColors.textSecondary, size: 44),
+                    SizedBox(height: 12),
+                    Text(
+                      'No available beds found in neighboring PHCs within route radius.',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 20),
+                  ],
+                );
+              }
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.alt_route_rounded, color: AppColors.redDark, size: 26),
+                          SizedBox(width: 10),
+                          Text(
+                            'Emergency Bed Reroute Request',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Spatial routing evaluated via OSRM live road network for $_phcName.',
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: recs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, idx) {
+                        final target = recs[idx];
+                        final targetId = target['phc_id'] ?? '';
+                        final targetName = target['phc_name'] ?? 'Target PHC';
+                        final distKm = (target['distance_km'] ?? 0.0).toStringAsFixed(1);
+                        final timeMins = target['estimated_time_mins'] ?? 0;
+                        final freeBeds = target['available_beds'] ?? 0;
+
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      targetName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.greenBg,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: AppColors.greenBorder),
+                                    ),
+                                    child: Text(
+                                      '$freeBeds Beds Available',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.greenText,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.directions_car_rounded, size: 16, color: AppColors.textSecondary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$distKm km away',
+                                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const Icon(Icons.access_time_rounded, size: 16, color: AppColors.textSecondary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '~$timeMins mins travel',
+                                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: freeBeds <= 0
+                                      ? null
+                                      : () async {
+                                          Navigator.pop(ctx);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Transmitting bed reroute request...')),
+                                          );
+                                          final result = await ApiService.executeBedReroute(
+                                            sourcePhcId: _currentPhcId,
+                                            targetPhcId: targetId,
+                                            patientCount: 1,
+                                            reason: '100% Occupancy Emergency Overcrowding Directive',
+                                          );
+                                          if (result['success'] == true) {
+                                            setState(() {
+                                              if (_occupiedBeds > 0) _occupiedBeds--;
+                                            });
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  backgroundColor: const Color(0xFF059669),
+                                                  content: Text(
+                                                    '✅ Patient Reroute Request Sent to Admin & Manager at $targetName!',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          } else {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  backgroundColor: AppColors.redDark,
+                                                  content: Text(
+                                                    '❌ ${result['message'] ?? 'Failed to complete reroute request.'}',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                  icon: const Icon(Icons.send_rounded, size: 16),
+                                  label: const Text('Raise Reroute Request to Manager / Admin'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2563EB),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildFacilityCapacityTab() {
     final availableBeds = (_bedCapacity - _occupiedBeds).clamp(0, 99);
     final occupancyPct = (_occupiedBeds / (_bedCapacity <= 0 ? 1 : _bedCapacity)).clamp(0.0, 1.0);
@@ -1183,16 +1418,16 @@ class _DispenseScreenState extends State<DispenseScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: availableBeds > 2 ? AppColors.greenBg : AppColors.redBg,
+                      color: availableBeds > 0 ? AppColors.greenBg : AppColors.redBg,
                       borderRadius: BorderRadius.circular(AppRadius.pill),
-                      border: Border.all(color: availableBeds > 2 ? AppColors.greenBorder : AppColors.redBorder),
+                      border: Border.all(color: availableBeds > 0 ? AppColors.greenBorder : AppColors.redBorder),
                     ),
                     child: Text(
-                      '$availableBeds Beds Available',
+                      availableBeds > 0 ? '$availableBeds Beds Available' : 'FULL CAPACITY (10/10)',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: availableBeds > 2 ? AppColors.greenText : AppColors.redText,
+                        color: availableBeds > 0 ? AppColors.greenText : AppColors.redText,
                       ),
                     ),
                   ),
@@ -1204,17 +1439,53 @@ class _DispenseScreenState extends State<DispenseScreen> {
                 child: LinearProgressIndicator(
                   value: occupancyPct,
                   backgroundColor: AppColors.surfaceMuted,
-                  color: occupancyPct > 0.85 ? AppColors.redDark : const Color(0xFF2563EB),
+                  color: occupancyPct >= 1.0 ? AppColors.redDark : const Color(0xFF2563EB),
                   minHeight: 10,
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Interactive Bed Slider
+              Row(
+                children: [
+                  const Text('Slide Beds: ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderThemeData(
+                        trackHeight: 6,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+                      ),
+                      child: Slider(
+                        value: _occupiedBeds.toDouble().clamp(0.0, (_bedCapacity <= 0 ? 10 : _bedCapacity).toDouble()),
+                        min: 0.0,
+                        max: (_bedCapacity <= 0 ? 10 : _bedCapacity).toDouble(),
+                        divisions: _bedCapacity <= 0 ? 10 : _bedCapacity,
+                        activeColor: occupancyPct >= 1.0 ? AppColors.redDark : const Color(0xFF2563EB),
+                        inactiveColor: AppColors.surfaceMuted,
+                        label: '$_occupiedBeds / $_bedCapacity beds',
+                        onChanged: (val) {
+                          setState(() {
+                            _occupiedBeds = val.toInt();
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Occupied Beds: $_occupiedBeds / $_bedCapacity Total',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: occupancyPct >= 1.0 ? AppColors.redDark : AppColors.textSecondary,
+                      fontWeight: occupancyPct >= 1.0 ? FontWeight.bold : FontWeight.w500,
+                    ),
                   ),
                   Row(
                     children: [
@@ -1238,6 +1509,66 @@ class _DispenseScreenState extends State<DispenseScreen> {
             ],
           ),
         ),
+
+        // 100% Capacity Emergency Bed Reroute Request Banner
+        if (_occupiedBeds >= _bedCapacity) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFEF2F2), Color(0xFFFEE2E2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: const Color(0xFFFCA5A5), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.redDark.withValues(alpha: 0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.warning_amber_rounded, color: AppColors.redDark, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      '🚨 100% Capacity Reached!',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.redDark),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'All $_bedCapacity beds at $_phcName are fully occupied. Raise an emergency bed reroute request to dispatch incoming patients to nearby PHCs & notify Manager / Admin.',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF7F1D1D), height: 1.35),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showBedRerouteModal(context),
+                    icon: const Icon(Icons.alt_route_rounded, size: 18),
+                    label: const Text('Raise Emergency Bed Reroute Request'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.redDark,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
 
         // Staff Attendance Section
