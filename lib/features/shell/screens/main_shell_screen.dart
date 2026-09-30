@@ -10,6 +10,7 @@ import '../../screens/dispense_screen.dart';
 import '../../screens/command_screen.dart';
 import '../../screens/transfers_screen.dart';
 import '../../screens/analytics_screen.dart';
+import '../../../widgets/quick_tour_dialog.dart';
 
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
@@ -34,6 +35,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _activeRole = widget.userRole ?? AuthController().userRole;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!AuthController().hasSeenTour) {
+        QuickTourDialog.show(context);
+      }
+    });
   }
 
   bool get _isAdmin {

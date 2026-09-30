@@ -64,14 +64,13 @@ class _MobileSplashScreenState extends State<MobileSplashScreen> with TickerProv
     });
 
     // Auto-navigate when initialization completes
-    _progressController.addStatusListener((status) {
+    _progressController.addStatusListener((status) async {
       if (status == AnimationStatus.completed) {
-        Future.delayed(const Duration(milliseconds: 200), () {
-          if (!mounted) return;
-          final auth = AuthController();
-          final nextRoute = auth.isAuthenticated ? AppRoutes.dashboard : AppRoutes.welcome;
-          Navigator.of(context).pushReplacementNamed(nextRoute);
-        });
+        final auth = AuthController();
+        await auth.init();
+        if (!mounted) return;
+        final nextRoute = auth.isAuthenticated ? AppRoutes.dashboard : AppRoutes.welcome;
+        Navigator.of(context).pushReplacementNamed(nextRoute);
       }
     });
   }

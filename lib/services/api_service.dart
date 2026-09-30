@@ -437,4 +437,52 @@ class ApiService {
     }
     return {'success': false};
   }
+
+  // 19. Fetch Bed Re-routing Recommendations for Overcrowded PHC
+  static Future<Map<String, dynamic>> fetchBedRerouteRecommendations({
+    required String phcId,
+    int patientCount = 1,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/beds/reroute-recommendations');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'phc_id': phcId,
+          'patient_count': patientCount,
+        }),
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      print('ApiService.fetchBedRerouteRecommendations error: $e');
+    }
+    return {'success': false, 'message': 'Failed to fetch bed reroute recommendations'};
+  }
+
+  // 20. Execute Bed Reservation Re-route
+  static Future<Map<String, dynamic>> executeBedReroute({
+    required String sourcePhcId,
+    required String targetPhcId,
+    int patientCount = 1,
+    String reason = 'Emergency Overcrowding Re-routing',
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/beds/reroute-patient');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'source_phc_id': sourcePhcId,
+          'target_phc_id': targetPhcId,
+          'patient_count': patientCount,
+          'reason': reason,
+        }),
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      print('ApiService.executeBedReroute error: $e');
+    }
+    return {'success': false, 'message': 'Failed to execute bed reroute'};
+  }
 }
