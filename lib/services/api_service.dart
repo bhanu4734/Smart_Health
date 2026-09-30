@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Configurable API base URL for Production & Local Development (Google Cloud Run)
-  static String baseUrl = 'https://project-resilience-api-255126562814.us-central1.run.app/api';
+  static String baseUrl = 'https://project-resilience-api.onrender.com/api';
 
   // 1. Fetch All PHCs
   static Future<List<dynamic>> fetchPHCs({String? districtId, String? search}) async {
