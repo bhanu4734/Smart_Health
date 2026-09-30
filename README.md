@@ -1,4 +1,4 @@
-# 🏥 PHC.Dispensing — Smart Health Clinical Node 
+ # 🏥 PHC.Dispensing — Smart Health Clinical Node 
 
 > **Project Resilience** · Clinical Inventory & Dispensing Management System  
 > Built for **PHC Rampur**, Mandal Warangal · Sector 4 Supply Node
